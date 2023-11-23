@@ -51,8 +51,8 @@ def server():
                 serverSocket.close()
 
                 # block to validate user
-                username = connectionSocket.recv(2048).decode('ascii')
-                password = connectionSocket.recv(2048).decode('ascii')
+                username = connectionSocket.recv(2048)
+                password = connectionSocket.recv(2048)
                 validate_user(connectionSocket, username, password)
                 # end of block to validate user
                 
