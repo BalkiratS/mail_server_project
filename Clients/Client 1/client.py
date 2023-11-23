@@ -26,7 +26,7 @@ def client():
         # Client is asked for username and password
         # Encrypt with server public key. Send to server
         try:
-            f = open('Clients/Client 1/server_public.pem','r')
+            f = open('server_public.pem','r') #original path: Clients/Client 1/server_public.pem - may need to remove folders preceding name
             server_pubkey = RSA.import_key(f.read())
             f.close()
         except:
@@ -38,7 +38,7 @@ def client():
         enc_user = cipher_rsa_en.encrypt(username.encode('ascii'))
         clientSocket.send(enc_user)
         password = input('Enter your password: ')
-        enc_pass = cipher_rsa_en.encrypt(password.encode('ascii'))
+        enc_pass = cipher_rsa_en.encrypt(password)
         clientSocket.send(enc_pass)
 
         response = clientSocket.recv(2048).decode('ascii')
@@ -49,9 +49,28 @@ def client():
         else:
             print('yay')
         
-        clientSocket.send(enc_user)
-        clientSocket.send(enc_pass)
+        #clientSocket.send(enc_user)
+        #clientSocket.send(enc_pass)
         
+        message = (clientSocket.recv(2048)).decode('ascii')
+        while True:
+            choice = input(message)
+            clientSocket.send(choice.encode('ascii'))
+            if choice == '1':
+                print('Enter destinations:')
+                # going to collect input later (mikayla)
+            
+            elif choice == '2':
+                print('inbox displays here')
+
+            elif choice == '3':
+                index = input('Enter the email index you wish to view: ')
+                # send index to server
+
+            elif choice == '4':
+                print('The connection is terminated with the server.')
+                break
+
     except socket.error as e:
         print('An error occured:',e)
         clientSocket.close()
