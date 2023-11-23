@@ -7,8 +7,10 @@ import os
 import random
 import json
 from Crypto.Cipher import AES
+from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
+from Crypto.Cipher import PKCS1_OAEP
 
 def gen_AES_key():
     KeyLen = 256
@@ -50,9 +52,23 @@ def server():
                 
                 serverSocket.close()
 
+                # Get decrpytion for login
+                try:
+                    f = open('Server/server_private.pem','r')
+                    priv_key = RSA.import_key(f.read())
+                    f.close()
+                    
+                except:
+                    print("Server Public Key could not be found.")
+                    connectionSocket.close
+                    sys.exit(1)
+                cipher_rsa_dec = PKCS1_OAEP.new(priv_key)
+
                 # block to validate user
-                username = connectionSocket.recv(2048)
-                password = connectionSocket.recv(2048)
+                enc_user = connectionSocket.recv(2048)
+                username = cipher_rsa_dec.decrypt(enc_user).decode('ascii')
+                enc_pass = connectionSocket.recv(2048)
+                password = cipher_rsa_dec.decrypt(enc_pass).decode('ascii')
                 validate_user(connectionSocket, username, password)
                 # end of block to validate user
                 
