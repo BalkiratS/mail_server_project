@@ -39,8 +39,8 @@ def client():
         enc_user = cipher_rsa_en.encrypt(username.encode('ascii'))
         enc_pass = cipher_rsa_en.encrypt(password.encode('ascii'))
         
-        clientSocket.send(enc_user.encode('ascii'))
-        clientSocket.send(enc_user.encode('ascii'))
+        clientSocket.send(enc_user)
+        clientSocket.send(enc_pass)
         
         # Client terminate connection with the server
         clientSocket.close()
