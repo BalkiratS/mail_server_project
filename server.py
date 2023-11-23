@@ -69,48 +69,9 @@ def server():
                 
                 serverSocket.close() 
                 
-                #Server send intro message to client, ask for name
-                message = "Welcome to examination system\n\nPlease enter your name: "
-                ct_bytes = cipher.encrypt(pad(message.encode('ascii'),16))
-                connectionSocket.send(ct_bytes)
-                
-                #Server receives name, stores name
+                #Server connects. No other actions. Disconnect when recieving any message form client
                 message = connectionSocket.recv(2048)
-                print(f"Encrypted message recieved: {message}")
-                s_name = unpad(cipher.decrypt(message),16).decode('ascii')
-                print(f"Decrypted message recieved: {s_name}")
-                
-                #Begin exam taking loop
-                while 1:
-                    correct_ttl = 0
-                    #Begin exam questions loop
-                    for i in range(4):
-                        #Generate exam question, send to client
-                        question = gen_question()
-                        answer = get_answer(question)
-                        ct_bytes = cipher.encrypt(pad(question.encode('ascii'),16))
-                        connectionSocket.send(ct_bytes)
-
-                        #Recieve client answer, if correct, add to correct_ttl
-                        message = connectionSocket.recv(2048)
-                        print(f"Encrypted message recieved from {s_name}: {message}")
-                        message = unpad(cipher.decrypt(message),16).decode('ascii')
-                        print(f"Decrypted message recieved from {s_name}: {message}")
-                        if int(message) == answer:
-                            correct_ttl += 1
-                    
-                    #Send score to client and ask whether they wish to try again
-                    message = f"You achieved a score of {correct_ttl}/4\nWould you like to try again? (y/n)"
-                    ct_bytes = cipher.encrypt(pad(message.encode('ascii'),16))
-                    connectionSocket.send(ct_bytes)
-
-                    #Recieve Client answer. If client response y or Y, repeat exam
-                    message = connectionSocket.recv(2048)
-                    print(f"Encrypted message recieved from {s_name}: {message}")
-                    message = unpad(cipher.decrypt(message),16).decode('ascii')
-                    print(f"Decrypted message recieved from {s_name}: {message}")
-                    if message.lower() != 'y':
-                        break
+                print("Disconnecting.")
                 
                 connectionSocket.close()
                 

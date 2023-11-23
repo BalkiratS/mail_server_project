@@ -22,33 +22,9 @@ def client():
         #Client connect with the server
         clientSocket.connect((serverName,serverPort))
         
-        # Client receives intro message, asks for user input, then sends name to server
-        message = clientSocket.recv(2048)
-        message = unpad(cipher.decrypt(message),16).decode('ascii')
+        # Client connects. NMo other action. Disconnect on any input.
         message = input(message)
-        ct_bytes = cipher.encrypt(pad(message.encode('ascii'),16))
-        clientSocket.send(ct_bytes)
-        
-        #Begin exam taking loop
-        while 1:
-            #Begin exam questions loop
-            for i in range(4):
-                #Client recieves question, asks for answer, sends answer
-                message = clientSocket.recv(2048)
-                message = unpad(cipher.decrypt(message),16).decode('ascii')
-                message = input(message)
-                ct_bytes = cipher.encrypt(pad(message.encode('ascii'),16))
-                clientSocket.send(ct_bytes)
-
-            #Client recieves score, and if they wish to retake exam
-            #If client responds y or Y, retake, otherwise end connection
-            message = clientSocket.recv(2048)
-            message = unpad(cipher.decrypt(message),16).decode('ascii')
-            message = input(message)
-            ct_bytes = cipher.encrypt(pad(message.encode('ascii'),16))
-            clientSocket.send(ct_bytes)
-            if message.lower() != 'y':
-                break
+        clientSocket.send(message)
         
         # Client terminate connection with the server
         clientSocket.close()
