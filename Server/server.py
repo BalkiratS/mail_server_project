@@ -72,6 +72,24 @@ def server():
                 validate_user(connectionSocket, username, password)
                 # end of block to validate user
                 
+                menu = 'Select the operation:\n1) Create and send an email\n2) Display the inbox list\n3) Display the email contents\n4) Terminate the connection\nchoice: '
+                connectionSocket.send(menu) # encrypt later
+
+                while True:
+                    choice = (connectionSocket.recv(2048)).decode('ascii')
+                    if choice == '1':
+                        print("create and send here")
+                        create_and_send(connectionSocket)
+                    elif choice == '2':
+                        print("view inbox here")
+                        display_inbox(connectionSocket)
+                    elif choice == '3':
+                        print("view email here")
+                        display_email(connectionSocket)
+                    elif choice == '4':
+                        break
+                        #terminate_connection(connectionSocket) # not finished yet
+                
                 connectionSocket.close()
                 
                 return
@@ -108,6 +126,19 @@ def validate_user(c, uname, pword):
         c.send(('Invalid username or password.\nTerminating.').encode('ascii'))
         print(f'The received client information: {uname} is invalid.\nConnection Terminated.')
         c.close()
+
+
+def create_and_send(c):
+    return
+
+def display_inbox(c):
+    return
+    
+def display_email(c):
+    return
+
+def terminate_connection(c):
+    return
 
 #-------
 server()
