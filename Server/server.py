@@ -118,7 +118,8 @@ def validate_user(c, uname, pword):
 
     # loads the contents of user_pass.json into a dictionary
     user_data = json.load(f)
-
+    f.close()
+    
     # if the username is found in the keys of the dictionary
     if uname in user_data.keys():
         # get the password for the user
@@ -129,6 +130,8 @@ def validate_user(c, uname, pword):
     # if the password is incorrect or the username is invalid
     if (password != pword or password == 'p'):
         c.send(('Invalid username or password.\nTerminating.').encode('ascii'))
+        print(f'The received client information: {uname} is invalid.\nConnection Terminated.')
+        c.close()
     else:
         c.send('Success'.encode('ascii'))
 
