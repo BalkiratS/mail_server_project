@@ -9,11 +9,11 @@ from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
 
-# Generate Key
-KeyLen = 256
-sym_key = get_random_bytes(int(KeyLen/8))
-# Generate Cyphering Block
-cipher = AES.new(sym_key, AES.MODE_ECB)
+def gen_AES_key():
+    KeyLen = 256
+    sym_key = get_random_bytes(int(KeyLen/8))
+    # Generate Cyphering Block
+    cypher = AES.new(sym_key, AES.MODE_ECB)
 
 def server():
     #Server port
@@ -50,7 +50,8 @@ def server():
                 serverSocket.close() 
                 
                 #Server connects. No other actions. Disconnect when recieving any message form client
-                message = connectionSocket.recv(2048)
+                enc_user = connectionSocket.recv(2048)
+                enc_pass = connectionSocket.recv(2048)
                 print("Disconnecting.")
                 
                 connectionSocket.close()

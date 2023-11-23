@@ -2,13 +2,12 @@
 # Author - Craig Zelmer    ID - 3097415
 import socket
 import sys
-from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
-from Crypto.Util.Padding import pad, unpad
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 
 def client():
     # Server Information
-    serverName = '127.0.0.1' #'localhost'
+    # serverName = '127.0.0.1' #'localhost'
     serverPort = 13000
     
     #Create client socket that useing IPv4 and TCP protocols 
@@ -18,6 +17,8 @@ def client():
         print('Error in client socket creation:',e)
         sys.exit(1)    
     
+    serverName = input("Enter the server IP or name: ")
+
     try:
         #Client connect with the server
         clientSocket.connect((serverName,serverPort))
@@ -26,8 +27,20 @@ def client():
         # Encrypt with server public key. Send to server
         username = input('Enter your username: ')
         password = input('Enter your password: ')
+        try:
+            f = open('server_public.pem','r')
+            server_pubkey = RSA.import_key(f.read())
+            f.close()
+        except:
+            print("Server Public Key could not be found.")
+            clientSocket.close
+            sys.exit(1)
+        cipher_rsa_en = PKCS1_OAEP.new(server_pubkey)
+        enc_user = cipher_rsa_en.encrypt(username.encode('ascii'))
+        enc_pass = cipher_rsa_en.encrypt(password.encode('ascii'))
         
-        clientSocket.send(message.encode('ascii'))
+        clientSocket.send(enc_user.encode('ascii'))
+        clientSocket.send(enc_user.encode('ascii'))
         
         # Client terminate connection with the server
         clientSocket.close()
