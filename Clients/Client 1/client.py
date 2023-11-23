@@ -22,8 +22,11 @@ def client():
         #Client connect with the server
         clientSocket.connect((serverName,serverPort))
         
-        # Client connects. No other action. Disconnect on any input.
-        message = input()
+        # Client is asked for username and password
+        # Encrypt with server public key. Send to server
+        username = input('Enter your username: ')
+        password = input('Enter your password: ')
+        
         clientSocket.send(message.encode('ascii'))
         
         # Client terminate connection with the server
