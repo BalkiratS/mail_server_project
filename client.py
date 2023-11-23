@@ -24,7 +24,7 @@ def client():
         
         # Client connects. No other action. Disconnect on any input.
         message = input()
-        clientSocket.send(message)
+        clientSocket.send(message.encode('ascii'))
         
         # Client terminate connection with the server
         clientSocket.close()
