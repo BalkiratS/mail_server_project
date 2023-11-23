@@ -15,26 +15,6 @@ sym_key = get_random_bytes(int(KeyLen/8))
 # Generate Cyphering Block
 cipher = AES.new(sym_key, AES.MODE_ECB)
 
-#Format "Number1 operator Number2 =" ops:{+, -, *} Num={0,100}
-def gen_question():
-    op_list = ['+', '-', '*']
-    num1 = random.randint(0, 100)
-    num2 = random.randint(0, 100)
-    op_rand = random.randint(0, 2)
-    op = op_list[op_rand]
-    question = f"{num1} {op} {num2} = "
-    return question
-
-#Gets answer from question generated in gen_question
-def get_answer(question):
-    qList = question.split()
-    if qList[1] == '+':
-        return int(qList[0]) + int(qList[2])
-    if qList[1] == '-':
-        return int(qList[0]) - int(qList[2])
-    if qList[1] == '*':
-        return int(qList[0]) * int(qList[2])
-
 def server():
     #Server port
     serverPort = 13000
