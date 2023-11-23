@@ -1,74 +1,26 @@
-# This is adapted from the example from
-# "Computer Networking: A Top Down Approach" textbook chapter 2
-# Author - Craig Zelmer    Student ID - 3097415
-
+# This is adapted from "Computer Networking: A Top Down Approach" textbook chapter 2
+# Author - Craig Zelmer    ID - 3097415
 import socket
 import sys
-import datetime
-import os
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+from Crypto.Util.Padding import pad, unpad
 
-def uploadFile(clientSocket):
-    #Get request for filename from server
-    message = clientSocket.recv(2048)
-    print(message.decode('ascii'))
-    
-    #Loop to get valid filename from user
-    while 1:
-        #Get filename from user
-        filename = input()
-        
-        #Check if file exists and get filesize
-        try:
-            fIn = open(filename, "rb")
-            #To get filesize, file must be in same dir as client.py
-            filesize = os.path.getsize(filename)
-            fIn.close()
-            break
-        except:
-            print("This file does not exist.\nEnter a valid filename")
-        
-    #Send formatted messsage of filename and size to server
-    message = f"{filename}\n{filesize}"
-    clientSocket.send(message.encode('ascii'))
-    
-    #Get confirmation from server
-    message = clientSocket.recv(2048)
-    print(message.decode('ascii'))
-        
-    #Begin upload of file to server
-    try:
-        fIn = open(filename, "rb")
-    except:
-        print(f"File: '{filename}' cannot be opened")    
-    data = fIn.read()
-    while data:
-        clientSocket.send(data)
-        data = fIn.read()
-    fIn.close()
-    print("Upload process complete")
-    
-    
-def username(clientSocket):
-    #Get username from input, send to server for validation
-    username = input()
-    message = username.encode('ascii')
-    clientSocket.send(message)
-    
-    #Print message, then if valid return 1, if not return 0
-    message = clientSocket.recv(2048)
-    message = message.decode('ascii')
-    print(message)
-    if message == "Incorrect username. Connection terminated.":
-        return 0
-    else:
-        return 1
-
+# Generate Key
+KeyLen = 256
+try:
+    fIn = open("key", "rb")
+except:
+    print("Could not open file: key")
+key = bytes(fIn.read())
+fIn.close()
+# Generate Cyphering Block
+cipher = AES.new(key, AES.MODE_ECB)
 
 def client():
     # Server Information
     serverName = '127.0.0.1' #'localhost'
-    serverPort = 13000
-    choice = '1'
+    serverPort = 12000
     
     #Create client socket that useing IPv4 and TCP protocols 
     try:
@@ -80,40 +32,37 @@ def client():
     try:
         #Client connect with the server
         clientSocket.connect((serverName,serverPort))
-              
-        # Client receives welcome message from the server and print it
+        
+        # Client receives intro message, asks for user input, then sends name to server
         message = clientSocket.recv(2048)
-        print(message.decode('ascii'))
+        message = unpad(cipher.decrypt(message),16).decode('ascii')
+        message = input(message)
+        ct_bytes = cipher.encrypt(pad(message.encode('ascii'),16))
+        clientSocket.send(ct_bytes)
         
-        #Get username from input, send to server for validation
-        valid = username(clientSocket)
-        if valid == 0:
-            clientSocket.close()
-            sys.exit(1)
-        
-        while choice != '3':
-            #Get user choice and send to server, do not accept empty string
-            while 1:
-                choice = input()
-                if choice:
-                    break
-            message = choice.encode('ascii')
-            clientSocket.send(message)
-            
-            if choice == '1':
-                #Get formatted string from server and print metadata
+        #Begin exam taking loop
+        while 1:
+            #Begin exam questions loop
+            for i in range(4):
+                #Client recieves question, asks for answer, sends answer
                 message = clientSocket.recv(2048)
-                print(message.decode('ascii'))
-            elif choice == '2':
-                uploadFile(clientSocket)
+                message = unpad(cipher.decrypt(message),16).decode('ascii')
+                message = input(message)
+                ct_bytes = cipher.encrypt(pad(message.encode('ascii'),16))
+                clientSocket.send(ct_bytes)
 
-            #Recieve operations from server again
+            #Client recieves score, and if they wish to retake exam
+            #If client responds y or Y, retake, otherwise end connection
             message = clientSocket.recv(2048)
-            print(message.decode('ascii'))     
-            
+            message = unpad(cipher.decrypt(message),16).decode('ascii')
+            message = input(message)
+            ct_bytes = cipher.encrypt(pad(message.encode('ascii'),16))
+            clientSocket.send(ct_bytes)
+            if message.lower() != 'y':
+                break
+        
         # Client terminate connection with the server
         clientSocket.close()
-        print("connection terminated.")
         
     except socket.error as e:
         print('An error occured:',e)
