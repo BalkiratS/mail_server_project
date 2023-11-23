@@ -6,18 +6,14 @@ import sys
 import os
 import random
 from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
 
 # Generate Key
 KeyLen = 256
-try:
-    fIn = open("key", "rb")
-except:
-    print("Could not open file: key")
-key = bytes(fIn.read())
-fIn.close()
+sym_key = get_random_bytes(int(KeyLen/8))
 # Generate Cyphering Block
-cipher = AES.new(key, AES.MODE_ECB)
+cipher = AES.new(sym_key, AES.MODE_ECB)
 
 #Format "Number1 operator Number2 =" ops:{+, -, *} Num={0,100}
 def gen_question():
