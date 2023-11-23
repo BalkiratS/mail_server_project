@@ -6,17 +6,6 @@ from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
 
-# Generate Key
-KeyLen = 256
-try:
-    fIn = open("key", "rb")
-except:
-    print("Could not open file: key")
-key = bytes(fIn.read())
-fIn.close()
-# Generate Cyphering Block
-cipher = AES.new(key, AES.MODE_ECB)
-
 def client():
     # Server Information
     serverName = '127.0.0.1' #'localhost'
