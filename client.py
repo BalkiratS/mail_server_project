@@ -22,8 +22,8 @@ def client():
         #Client connect with the server
         clientSocket.connect((serverName,serverPort))
         
-        # Client connects. NMo other action. Disconnect on any input.
-        message = input(message)
+        # Client connects. No other action. Disconnect on any input.
+        message = input()
         clientSocket.send(message)
         
         # Client terminate connection with the server
