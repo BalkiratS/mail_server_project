@@ -38,7 +38,7 @@ def client():
         enc_user = cipher_rsa_en.encrypt(username.encode('ascii'))
         clientSocket.send(enc_user)
         password = input('Enter your password: ')
-        enc_pass = cipher_rsa_en.encrypt(password)
+        enc_pass = cipher_rsa_en.encrypt(password.encode('ascii'))
         clientSocket.send(enc_pass)
 
         response = clientSocket.recv(2048).decode('ascii')
@@ -52,10 +52,12 @@ def client():
         #clientSocket.send(enc_user)
         #clientSocket.send(enc_pass)
         
-        message = (clientSocket.recv(2048)).decode('ascii')
+        menu = clientSocket.recv(2048).decode('ascii')
         while True:
-            choice = input(message)
+            print(menu, end='')
+            choice = input('choice: ')
             clientSocket.send(choice.encode('ascii'))
+
             if choice == '1':
                 destinations = input('Enter destinations (separated by ;): ')
                 clientSocket.send(destinations.encode('ascii'))

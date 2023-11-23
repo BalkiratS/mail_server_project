@@ -54,7 +54,7 @@ def server():
 
                 # Get decrpytion for login
                 try:
-                    f = open('server_private.pem','r') # original path is Server/server_private.pem - may need to remove folders preceding name
+                    f = open('server_private.pem','r') # original path is Server/server_private.pem
                     priv_key = RSA.import_key(f.read())
                     f.close()
                     
@@ -72,8 +72,8 @@ def server():
                 validate_user(connectionSocket, username, password)
                 # end of block to validate user
                 
-                menu = 'Select the operation:\n1) Create and send an email\n2) Display the inbox list\n3) Display the email contents\n4) Terminate the connection\nchoice: '
-                connectionSocket.send(menu) # encrypt later
+                menu = '\nSelect the operation:\n1) Create and send an email\n2) Display the inbox list\n3) Display the email contents\n4) Terminate the connection\n'
+                connectionSocket.send(menu.encode('ascii')) # encrypt
 
                 while True:
                     choice = (connectionSocket.recv(2048)).decode('ascii')
@@ -114,7 +114,7 @@ def server():
 
 def validate_user(c, uname, pword):
     # opens the user_pass.json
-    f = open('Server/user_pass.json')
+    f = open('user_pass.json') # original path is Server/user_pass.json
 
     # loads the contents of user_pass.json into a dictionary
     user_data = json.load(f)
@@ -129,7 +129,8 @@ def validate_user(c, uname, pword):
     # if the password is incorrect or the username is invalid
     if (password != pword or password == 'p'):
         c.send(('Invalid username or password.\nTerminating.').encode('ascii'))
-
+    else:
+        c.send('Success'.encode('ascii'))
 
 def create_and_send(c):
     return
