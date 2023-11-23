@@ -26,24 +26,36 @@ def client():
         # Client is asked for username and password
         # Encrypt with server public key. Send to server
         username = input('Enter your username: ')
+        clientSocket.send(username.encode('ascii'))
         password = input('Enter your password: ')
-        try:
-            f = open('server_public.pem','r')
-            server_pubkey = RSA.import_key(f.read())
-            f.close()
-        except:
-            print("Server Public Key could not be found.")
-            clientSocket.close
-            sys.exit(1)
-        cipher_rsa_en = PKCS1_OAEP.new(server_pubkey)
-        enc_user = cipher_rsa_en.encrypt(username.encode('ascii'))
-        enc_pass = cipher_rsa_en.encrypt(password.encode('ascii'))
+
+        clientSocket.send(password.encode('ascii'))
+
+        response = clientSocket.recv(2048).decode('ascii')
+        if response == 'Invalid username or password.\nTerminating.':
+            print(response)
+            clientSocket.close()
+
+        else:
+            print('yay')
+
+#         try:
+#             f = open('server_public.pem','r')
+#             server_pubkey = RSA.import_key(f.read())
+#             f.close()
+#         except:
+#             print("Server Public Key could not be found.")
+#             clientSocket.close
+#             sys.exit(1)
+#         cipher_rsa_en = PKCS1_OAEP.new(server_pubkey)
+#         enc_user = cipher_rsa_en.encrypt(username.encode('ascii'))
+#         enc_pass = cipher_rsa_en.encrypt(password.encode('ascii'))
         
-        clientSocket.send(enc_user.encode('ascii'))
-        clientSocket.send(enc_user.encode('ascii'))
+#         clientSocket.send(enc_user.encode('ascii'))
+#         clientSocket.send(enc_user.encode('ascii'))
         
-        # Client terminate connection with the server
-        clientSocket.close()
+#         # Client terminate connection with the server
+#         clientSocket.close()
         
     except socket.error as e:
         print('An error occured:',e)
