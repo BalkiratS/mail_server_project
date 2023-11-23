@@ -57,19 +57,38 @@ def client():
             choice = input(message)
             clientSocket.send(choice.encode('ascii'))
             if choice == '1':
-                print('Enter destinations:')
-                # going to collect input later (mikayla)
+                destinations = input('Enter destinations (separated by ;): ')
+                clientSocket.send(destinations.encode('ascii'))
+
+                title = input('Enter title: ')
+                clientSocket.send(title.encode('ascii'))
+
+                add_from_file = input('Would you like to load contents from a file?(Y/N) ')
+                clientSocket.send(add_from_file.encode('ascii'))
+
+                if add_from_file == "Y" or add_from_file == "y":
+                    message = input('Enter filename: ')
+                else:
+                    message = input('Enter message contents: ')
+                clientSocket.send(message.encode('ascii'))
+
+                print('The message is sent to the server.')
             
             elif choice == '2':
                 print('inbox displays here')
 
             elif choice == '3':
+                initial_msg = clientSocket.recv(2048).decode('ascii')
+
                 index = input('Enter the email index you wish to view: ')
-                # send index to server
+                clientSocket.send(index.encode('ascii'))
 
             elif choice == '4':
                 print('The connection is terminated with the server.')
                 break
+
+            else:
+                print('Option does not exist. Try again.')
 
     except socket.error as e:
         print('An error occured:',e)

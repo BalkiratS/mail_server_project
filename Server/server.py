@@ -54,7 +54,7 @@ def server():
 
                 # Get decrpytion for login
                 try:
-                    f = open('Server/server_private.pem','r')
+                    f = open('server_private.pem','r') # original path is Server/server_private.pem - may need to remove folders preceding name
                     priv_key = RSA.import_key(f.read())
                     f.close()
                     
@@ -80,15 +80,21 @@ def server():
                     if choice == '1':
                         print("create and send here")
                         create_and_send(connectionSocket)
+
                     elif choice == '2':
                         print("view inbox here")
                         display_inbox(connectionSocket)
+
                     elif choice == '3':
                         print("view email here")
                         display_email(connectionSocket)
+
                     elif choice == '4':
                         break
                         #terminate_connection(connectionSocket) # not finished yet
+
+                    else:
+                        continue
                 
                 connectionSocket.close()
                 
