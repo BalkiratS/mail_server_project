@@ -25,12 +25,17 @@ def client():
         # Client is asked for username and password
         # Encrypt with server public key. Send to server
         username = input('Enter your username: ')
+        clientSocket.send(username.encode('ascii'))
         password = input('Enter your password: ')
-        
-        clientSocket.send(message.encode('ascii'))
-        
-        # Client terminate connection with the server
-        clientSocket.close()
+        clientSocket.send(password.encode('ascii'))
+
+        response = clientSocket.recv(2048).decode('ascii')
+        if response == 'Invalid username or password.\nTerminating.':
+            print(response)
+            clientSocket.close()
+
+        else:
+            print('yay')
         
     except socket.error as e:
         print('An error occured:',e)

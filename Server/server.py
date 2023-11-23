@@ -5,6 +5,7 @@ import socket
 import sys
 import os
 import random
+import json
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
@@ -47,12 +48,14 @@ def server():
             # If it is a client process
             if  pid == 0:
                 
-                serverSocket.close() 
-                
-                #Server connects. No other actions. Disconnect when recieving any message form client
-                message = connectionSocket.recv(2048)
-                print("Disconnecting.")
-                
+                serverSocket.close()
+
+                # block to validate user
+                username = connectionSocket.recv(2048).decode('ascii')
+                password = connectionSocket.recv(2048).decode('ascii')
+                validate_user(connectionSocket, username, password)
+                # end of block to validate user
+            
                 connectionSocket.close()
                 
                 return
@@ -68,7 +71,24 @@ def server():
             print('Goodbye')
             serverSocket.close() 
             sys.exit(0)
-            
-        
+
+def validate_user(c, uname, pword):
+    # opens the user_pass.json
+    f = open('Server/user_pass.json')
+
+    # loads the contents of user_pass.json into a dictionary
+    user_data = json.load(f)
+
+    # if the username is found in the keys of the dictionary
+    if uname in user_data.keys():
+        # get the password for the user
+        password = user_data[uname]
+    else: # if not, we'll set a flag to show that the username is invalid
+        password = 'p'
+    
+    # if the password is incorrect or the username is invalid
+    if (password != pword or password == 'p'):
+        c.send(('Invalid username or password.\nTerminating.').encode('ascii'))
+
 #-------
 server()
