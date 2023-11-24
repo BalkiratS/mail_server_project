@@ -55,7 +55,7 @@ def server():
 
                 # Get decrpytion for login
                 try:
-                    f = open('Server/server_private.pem','r')
+                    f = open('server_private.pem','r') # Alternative path is Server/server_private.pem
                     priv_key = RSA.import_key(f.read())
                     f.close()
                     
@@ -73,23 +73,29 @@ def server():
                 validate_user(connectionSocket, username, password)
                 # end of block to validate user
                 
-                menu = 'Select the operation:\n1) Create and send an email\n2) Display the inbox list\n3) Display the email contents\n4) Terminate the connection\nchoice: '
-                connectionSocket.send(menu) # encrypt later
+                menu = '\nSelect the operation:\n1) Create and send an email\n2) Display the inbox list\n3) Display the email contents\n4) Terminate the connection\n'
+                connectionSocket.send(menu.encode('ascii')) # encrypt
 
                 while True:
                     choice = (connectionSocket.recv(2048)).decode('ascii')
                     if choice == '1':
                         print("create and send here")
                         create_and_send(connectionSocket)
+
                     elif choice == '2':
                         print("view inbox here")
                         display_inbox(connectionSocket)
+
                     elif choice == '3':
                         print("view email here")
                         display_email(connectionSocket)
+
                     elif choice == '4':
                         break
                         #terminate_connection(connectionSocket) # not finished yet
+
+                    else:
+                        continue
                 
                 connectionSocket.close()
                 
@@ -109,7 +115,7 @@ def server():
 
 def validate_user(c, uname, pword):
     # opens the user_pass.json
-    f = open('Server/user_pass.json')
+    f = open('user_pass.json') # Alternative path is Server/user_pass.json
 
     # loads the contents of user_pass.json into a dictionary
     user_data = json.load(f)
@@ -128,12 +134,13 @@ def validate_user(c, uname, pword):
         print(f'The received client information: {uname} is invalid.\nConnection Terminated.')
         c.close()
     else: # if user is validated
+        c.send('Success'.encode('ascii')) # Sent this to parallel the 'invalid username and password' line
         # generate symmetric key
         sym_key = gen_AES_key()
         
         # this formatting is just for pathing purposes
         client_num = f'Client {uname[6:]}'
-        client_pubkey = f'Clients/{client_num}/{uname}_public.pem'
+        client_pubkey = f'{uname}_public.pem' # Alternative paths if crashing: Clients/{client_num}/{uname}_public.pem OR {uname}_public.pem
 
         # will open the client's public key to be used for encryption
         try:
