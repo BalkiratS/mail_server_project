@@ -6,28 +6,10 @@ from Crypto.PublicKey import RSA
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Cipher import PKCS1_OAEP, AES
 
-def client():
-    # Server Information
-    # serverName = '127.0.0.1' #'localhost'
-    serverPort = 13000
-    
-    #Create client socket that useing IPv4 and TCP protocols 
-    try:
-        clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    except socket.error as e:
-        print('Error in client socket creation:',e)
-        sys.exit(1)    
-    
-    serverName = input("Enter the server IP or name: ")
-
-    try:
-        #Client connect with the server
-        clientSocket.connect((serverName,serverPort))
-        
-        # Client is asked for username and password
-        # Encrypt with server public key. Send to server
+def handshake(clientSocket):
         try:
-            f = open('Clients/Client 1/server_public.pem','r') # Alternative path: Clients/Client 1/server_public.pem - may need to remove folders preceding name
+            #f = open('server_public.pem','r') 
+            f = open('Clients/Client 1/server_public.pem','r') #Alternate path
             server_pubkey = RSA.import_key(f.read())
             f.close()
         except:
@@ -48,6 +30,7 @@ def client():
         if response == 'Invalid username or password.\nTerminating.':
             print(response)
             clientSocket.close()
+            sys.exit(0)
 
         else: # will receive the sym key from the server, encrypt an OK message
               # with it, and send it to server
@@ -75,9 +58,28 @@ def client():
             pad_ok = pad('OK'.encode('ascii'), 16)
             ok_enc = sym_cipher.encrypt(pad_ok)
             clientSocket.send(ok_enc)
+
+def client():
+    # Server Information
+    # serverName = '127.0.0.1' #'localhost'
+    serverPort = 13000
+    
+    #Create client socket that useing IPv4 and TCP protocols 
+    try:
+        clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    except socket.error as e:
+        print('Error in client socket creation:',e)
+        sys.exit(1)    
+    
+    serverName = input("Enter the server IP or name: ")
+
+    try:
+        #Client connect with the server
+        clientSocket.connect((serverName,serverPort))
         
-        #clientSocket.send(enc_user)
-        #clientSocket.send(enc_pass)
+        # Client is asked for username and password
+        # Encrypt with server public key. Send to server
+        handshake(clientSocket)
         
         menu = clientSocket.recv(2048).decode('ascii')
         while True:
