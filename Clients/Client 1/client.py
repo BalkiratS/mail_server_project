@@ -26,7 +26,7 @@ def client():
         # Client is asked for username and password
         # Encrypt with server public key. Send to server
         try:
-            f = open('server_public.pem','r') #original path: Clients/Client 1/server_public.pem - may need to remove folders preceding name
+            f = open('server_public.pem','r') # Alternative path: Clients/Client 1/server_public.pem - may need to remove folders preceding name
             server_pubkey = RSA.import_key(f.read())
             f.close()
         except:
