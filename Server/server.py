@@ -77,10 +77,7 @@ def server():
                 response = connectionSocket.recv(2048)
                 cipher = AES.new(sym_key, AES.MODE_ECB)
                 response_dec = cipher.decrypt(response)
-
-                # !!!! THIS SEEMS TO BE WHERE THE ERROR'S HAPPENING !!!!
                 response_unpad = unpad(response_dec, 16).decode('ascii')
-                print(response_unpad)
                 
                 menu = '\nSelect the operation:\n1) Create and send an email\n2) Display the inbox list\n3) Display the email contents\n4) Terminate the connection\n'
                 connectionSocket.send(menu.encode('ascii')) # encrypt

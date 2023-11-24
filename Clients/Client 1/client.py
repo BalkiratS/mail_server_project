@@ -43,18 +43,38 @@ def client():
         clientSocket.send(enc_pass)
 
         response = clientSocket.recv(2048).decode('ascii')
+
+        # if the username/password is invalid
         if response == 'Invalid username or password.\nTerminating.':
             print(response)
             clientSocket.close()
 
         else: # will receive the sym key from the server, encrypt an OK message
               # with it, and send it to server
-            sym_key = clientSocket.recv(32) # using 2048 doesn't play nice with this so i used 32 to receive
-                                            # the symmetric key
-            sym_cipher = AES.new(sym_key, AES.MODE_ECB)
+
+            # will get the client's private key to be used for sym key decryption
+            client_num = f'Client {username[6:]}'
+            client_privkey = f'Clients/{client_num}/{username}_private.pem'
+
+            try:
+                f_key = open(client_privkey, 'r')
+                privkey = RSA.import_key(f_key.read())
+                f_key.close()
+            except:
+                print('Client Private Key could not be found.')
+            
+            # will create a ciphering block for the client private key, then receive and decrypt the
+            # symmetric key
+            priv_cipher = PKCS1_OAEP.new(privkey)
+            sym_key = clientSocket.recv(2048)
+            sym_decrypt = priv_cipher.decrypt(sym_key)
+
+            # will create a ciphering block for the symmetric key, then create and send an OK message
+            # to the server using symmetric key encryption
+            sym_cipher = AES.new(sym_decrypt, AES.MODE_ECB)
             pad_ok = pad('OK'.encode('ascii'), 16)
             ok_enc = sym_cipher.encrypt(pad_ok)
-            clientSocket.send(ok_enc) # at this point, client sends the message just fine
+            clientSocket.send(ok_enc)
         
         #clientSocket.send(enc_user)
         #clientSocket.send(enc_pass)
