@@ -16,7 +16,8 @@ def gen_AES_key():
     KeyLen = 256
     sym_key = get_random_bytes(int(KeyLen/8))
     # Generate Cyphering Block
-    cypher = AES.new(sym_key, AES.MODE_ECB)
+    cipher = AES.new(sym_key, AES.MODE_ECB)
+    return cipher
 
 def server():
     #Server port
@@ -132,9 +133,30 @@ def validate_user(c, uname, pword):
         c.send(('Invalid username or password.\nTerminating.').encode('ascii'))
         print(f'The received client information: {uname} is invalid.\nConnection Terminated.')
         c.close()
-    else:
-        c.send('Success'.encode('ascii'))
+    else: # if user is validated
+        # generate symmetric key
+        sym_key = gen_AES_key()
+        
+        # this formatting is just for pathing purposes
+        client_num = f'Client {uname[6:]}'
+        client_pubkey = f'Clients/{client_num}/{uname}_public.pem'
 
+        # will open the client's public key to be used for encryption
+        try:
+            f_key = open(client_pubkey, 'r')
+            pubkey = RSA.import_key(f_key.read())
+            f_key.close()
+        except:
+            print('Client Public Key could not be found.')
+            sys.exit(1)
+        
+        # encrypt the symmetric key using the client's public key and send it
+        cipher = PKCS1_OAEP.new(pubkey)
+        enc_msg = cipher.encrypt(sym_key.encode('ascii'))
+        c.send(enc_msg)
+        print(f'Connection Accepted and Symmetric Key generated for client: {uname}')
+
+        
 def create_and_send(c):
     return
 
