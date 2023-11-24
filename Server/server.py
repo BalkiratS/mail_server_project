@@ -15,9 +15,33 @@ from Crypto.Cipher import PKCS1_OAEP
 def gen_AES_key():
     KeyLen = 256
     sym_key = get_random_bytes(int(KeyLen/8))
-    # Generate Cyphering Block
-    cipher = AES.new(sym_key, AES.MODE_ECB)
     return sym_key
+
+def handshake(connectionSocket):
+    try:
+        f = open('Server/server_private.pem','r')
+        priv_key = RSA.import_key(f.read())
+        f.close()
+
+    except:
+        print("Server Public Key could not be found.")
+        connectionSocket.close
+        sys.exit(1)
+    cipher_rsa_dec = PKCS1_OAEP.new(priv_key)
+
+    # block to validate user
+    enc_user = connectionSocket.recv(2048)
+    username = cipher_rsa_dec.decrypt(enc_user).decode('ascii')
+    enc_pass = connectionSocket.recv(2048)
+    password = cipher_rsa_dec.decrypt(enc_pass).decode('ascii')
+    sym_key = validate_user(connectionSocket, username, password)
+    # end of block to validate user
+
+    # receiving the OK message from client before sending menu
+    response = connectionSocket.recv(2048)
+    cipher = AES.new(sym_key, AES.MODE_ECB)
+    response_dec = cipher.decrypt(response)
+    response_unpad = unpad(response_dec, 16).decode('ascii')
 
 def server():
     #Server port
@@ -54,30 +78,7 @@ def server():
                 serverSocket.close()
 
                 # Get decrpytion for login
-                try:
-                    f = open('Server/server_private.pem','r') # Alternative path is Server/server_private.pem
-                    priv_key = RSA.import_key(f.read())
-                    f.close()
-                    
-                except:
-                    print("Server Public Key could not be found.")
-                    connectionSocket.close
-                    sys.exit(1)
-                cipher_rsa_dec = PKCS1_OAEP.new(priv_key)
-
-                # block to validate user
-                enc_user = connectionSocket.recv(2048)
-                username = cipher_rsa_dec.decrypt(enc_user).decode('ascii')
-                enc_pass = connectionSocket.recv(2048)
-                password = cipher_rsa_dec.decrypt(enc_pass).decode('ascii')
-                sym_key = validate_user(connectionSocket, username, password)
-                # end of block to validate user
-
-                # receiving the OK message from client before sending menu
-                response = connectionSocket.recv(2048)
-                cipher = AES.new(sym_key, AES.MODE_ECB)
-                response_dec = cipher.decrypt(response)
-                response_unpad = unpad(response_dec, 16).decode('ascii')
+                handshake(connectionSocket)
                 
                 menu = '\nSelect the operation:\n1) Create and send an email\n2) Display the inbox list\n3) Display the email contents\n4) Terminate the connection\n'
                 connectionSocket.send(menu.encode('ascii')) # encrypt
@@ -140,6 +141,7 @@ def validate_user(c, uname, pword):
         c.send(('Invalid username or password.\nTerminating.').encode('ascii'))
         print(f'The received client information: {uname} is invalid.\nConnection Terminated.')
         c.close()
+        sys.exit(0)
     else: # if user is validated
         c.send('Success'.encode('ascii')) # Sent this to parallel the 'invalid username and password' line
         # generate symmetric key
