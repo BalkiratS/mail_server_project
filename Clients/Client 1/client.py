@@ -9,7 +9,7 @@ from Crypto.Cipher import PKCS1_OAEP, AES
 def handshake(clientSocket):
         try:
             #f = open('server_public.pem','r') 
-            f = open('Clients/Client 1/server_public.pem','r') #Alternate path
+            f = open('Clients/Client 1/server_public.pem','r') #Alternate path without folders
             server_pubkey = RSA.import_key(f.read())
             f.close()
         except:
@@ -58,6 +58,7 @@ def handshake(clientSocket):
             pad_ok = pad('OK'.encode('ascii'), 16)
             ok_enc = sym_cipher.encrypt(pad_ok)
             clientSocket.send(ok_enc)
+            return sym_cipher
 
 def client():
     # Server Information
@@ -79,15 +80,22 @@ def client():
         
         # Client is asked for username and password
         # Encrypt with server public key. Send to server
-        handshake(clientSocket)
+        sym_cipher = handshake(clientSocket)
         
-        menu = clientSocket.recv(2048).decode('ascii')
+        # Receive menu and decrypt (used existing cipher block from handshake() for continuity)
+        menu_recv = clientSocket.recv(2048)
+        menu_dec = sym_cipher.decrypt(menu_recv)
+        menu_unpad = unpad(menu_dec, 16).decode('ascii')
         while True:
-            print(menu, end='')
+            print(menu_unpad, end='')
+            # Get choice, encrypt with symmetric key, then send to server
             choice = input('choice: ')
-            clientSocket.send(choice.encode('ascii'))
+            choice_pad = pad(choice.encode('ascii'), 16)
+            choice_enc = sym_cipher.encrypt(choice_pad)
+            clientSocket.send(choice_enc)
 
             if choice == '1':
+                # Gather input for email
                 destinations = input('Enter destinations (separated by ;): ')
                 clientSocket.send(destinations.encode('ascii'))
 
@@ -109,10 +117,7 @@ def client():
                 print('inbox displays here')
 
             elif choice == '3':
-                initial_msg = clientSocket.recv(2048).decode('ascii')
-
-                index = input('Enter the email index you wish to view: ')
-                clientSocket.send(index.encode('ascii'))
+                print('email displays here')
 
             elif choice == '4':
                 print('The connection is terminated with the server.')
