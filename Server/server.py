@@ -17,7 +17,7 @@ def gen_AES_key():
     sym_key = get_random_bytes(int(KeyLen/8))
     # Generate Cyphering Block
     cipher = AES.new(sym_key, AES.MODE_ECB)
-    return cipher
+    return sym_key
 
 def server():
     #Server port
@@ -55,7 +55,7 @@ def server():
 
                 # Get decrpytion for login
                 try:
-                    f = open('server_private.pem','r') # Alternative path is Server/server_private.pem
+                    f = open('Server/server_private.pem','r') # Alternative path is Server/server_private.pem
                     priv_key = RSA.import_key(f.read())
                     f.close()
                     
@@ -70,8 +70,17 @@ def server():
                 username = cipher_rsa_dec.decrypt(enc_user).decode('ascii')
                 enc_pass = connectionSocket.recv(2048)
                 password = cipher_rsa_dec.decrypt(enc_pass).decode('ascii')
-                validate_user(connectionSocket, username, password)
+                sym_key = validate_user(connectionSocket, username, password)
                 # end of block to validate user
+
+                # receiving the OK message from client before sending menu
+                response = connectionSocket.recv(2048)
+                cipher = AES.new(sym_key, AES.MODE_ECB)
+                response_dec = cipher.decrypt(response)
+
+                # !!!! THIS SEEMS TO BE WHERE THE ERROR'S HAPPENING !!!!
+                response_unpad = unpad(response_dec, 16).decode('ascii')
+                print(response_unpad)
                 
                 menu = '\nSelect the operation:\n1) Create and send an email\n2) Display the inbox list\n3) Display the email contents\n4) Terminate the connection\n'
                 connectionSocket.send(menu.encode('ascii')) # encrypt
@@ -108,14 +117,15 @@ def server():
             print('An error occured:',e)
             serverSocket.close() 
             sys.exit(1)        
-        except:
-            print('Goodbye')
+        except Exception as e:
+            print(f'Unhandled exception of type {type(e).__name__}: {str(e)}')
+            #print('Goodbye')
             serverSocket.close() 
             sys.exit(0)
 
 def validate_user(c, uname, pword):
     # opens the user_pass.json
-    f = open('user_pass.json') # Alternative path is Server/user_pass.json
+    f = open('Server/user_pass.json') # Alternative path is Server/user_pass.json
 
     # loads the contents of user_pass.json into a dictionary
     user_data = json.load(f)
@@ -140,7 +150,7 @@ def validate_user(c, uname, pword):
         
         # this formatting is just for pathing purposes
         client_num = f'Client {uname[6:]}'
-        client_pubkey = f'{uname}_public.pem' # Alternative paths if crashing: Clients/{client_num}/{uname}_public.pem OR {uname}_public.pem
+        client_pubkey = f'Clients/{client_num}/{uname}_public.pem' # Alternative paths if crashing: Clients/{client_num}/{uname}_public.pem OR {uname}_public.pem
 
         # will open the client's public key to be used for encryption
         try:
@@ -153,9 +163,11 @@ def validate_user(c, uname, pword):
         
         # encrypt the symmetric key using the client's public key and send it
         cipher = PKCS1_OAEP.new(pubkey)
-        enc_msg = cipher.encrypt(sym_key.encode('ascii'))
+        enc_msg = cipher.encrypt(sym_key)
         c.send(enc_msg)
         print(f'Connection Accepted and Symmetric Key generated for client: {uname}')
+
+        return sym_key
 
         
 def create_and_send(c):

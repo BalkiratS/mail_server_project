@@ -3,7 +3,8 @@
 import socket
 import sys
 from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Util.Padding import pad, unpad
+from Crypto.Cipher import PKCS1_OAEP, AES
 
 def client():
     # Server Information
@@ -26,7 +27,7 @@ def client():
         # Client is asked for username and password
         # Encrypt with server public key. Send to server
         try:
-            f = open('server_public.pem','r') # Alternative path: Clients/Client 1/server_public.pem - may need to remove folders preceding name
+            f = open('Clients/Client 1/server_public.pem','r') # Alternative path: Clients/Client 1/server_public.pem - may need to remove folders preceding name
             server_pubkey = RSA.import_key(f.read())
             f.close()
         except:
@@ -46,8 +47,14 @@ def client():
             print(response)
             clientSocket.close()
 
-        else:
-            print('yay')
+        else: # will receive the sym key from the server, encrypt an OK message
+              # with it, and send it to server
+            sym_key = clientSocket.recv(32) # using 2048 doesn't play nice with this so i used 32 to receive
+                                            # the symmetric key
+            sym_cipher = AES.new(sym_key, AES.MODE_ECB)
+            pad_ok = pad('OK'.encode('ascii'), 16)
+            ok_enc = sym_cipher.encrypt(pad_ok)
+            clientSocket.send(ok_enc) # at this point, client sends the message just fine
         
         #clientSocket.send(enc_user)
         #clientSocket.send(enc_pass)
