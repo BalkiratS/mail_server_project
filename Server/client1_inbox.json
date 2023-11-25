@@ -1,1 +1,17 @@
-{}
+{
+    "inbox": [
+      {
+        "Index": 1,
+        "From": "client2",
+        "DateTime": "2022-07-21 19:29:35.768508",
+        "Title": "Test2"
+      },
+      {
+        "Index": 2,
+        "From": "client1",
+        "DateTime": "2022-07-21 19:29:42.118132",
+        "Title": "Test"
+      }
+    ]
+  }
+  

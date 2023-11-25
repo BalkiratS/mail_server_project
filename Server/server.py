@@ -43,7 +43,7 @@ def handshake(connectionSocket):
     response_dec = cipher.decrypt(response)
     response_unpad = unpad(response_dec, 16).decode('ascii')
 
-    return cipher
+    return cipher, username # added a username to return to be used in subprotocols
 
 def server():
     #Server port
@@ -80,7 +80,7 @@ def server():
                 serverSocket.close()
 
                 # Get decryption for login
-                sym_cipher = handshake(connectionSocket)
+                sym_cipher, username = handshake(connectionSocket) 
                 
                 # Encrypt with symmetric key and send menu to client
                 menu = '\nSelect the operation:\n1) Create and send an email\n2) Display the inbox list\n3) Display the email contents\n4) Terminate the connection\n'
@@ -98,8 +98,8 @@ def server():
                         create_and_send(connectionSocket)
 
                     elif choice == '2':
-                        print("view inbox here")
-                        display_inbox(connectionSocket)
+                        #print("viewing inbox")
+                        display_inbox(connectionSocket, sym_cipher, username)
 
                     elif choice == '3':
                         print("view email here")
@@ -181,7 +181,23 @@ def create_and_send(c):
     # Receive responses from client.py inputs
     return
 
-def display_inbox(c):
+def display_inbox(c, sym_cipher, username):
+    # path for the client's inbox
+    inbox_path = f'Server/{username}_inbox.json'
+
+    # open and load the json into a dictionary
+    f = open(inbox_path)
+    inbox_dict = json.load(f)
+    f.close()
+
+    # create a json string from the json file and encrypt it with
+    # the symmetric key
+    inbox = json.dumps(inbox_dict)
+    inbox_pad = pad(inbox.encode(), 16)
+    inbox_enc = sym_cipher.encrypt(inbox_pad)
+
+    c.sendall(inbox_enc)
+
     return
     
 def display_email(c):
