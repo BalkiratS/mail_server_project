@@ -43,6 +43,8 @@ def handshake(connectionSocket):
     response_dec = cipher.decrypt(response)
     response_unpad = unpad(response_dec, 16).decode('ascii')
 
+    return cipher
+
 def server():
     #Server port
     serverPort = 13000
@@ -77,14 +79,20 @@ def server():
                 
                 serverSocket.close()
 
-                # Get decrpytion for login
-                handshake(connectionSocket)
+                # Get decryption for login
+                sym_cipher = handshake(connectionSocket)
                 
+                # Encrypt with symmetric key and send menu to client
                 menu = '\nSelect the operation:\n1) Create and send an email\n2) Display the inbox list\n3) Display the email contents\n4) Terminate the connection\n'
-                connectionSocket.send(menu.encode('ascii')) # encrypt
+                menu_pad = pad(menu.encode('ascii'), 16)
+                menu_enc = sym_cipher.encrypt(menu_pad)
+                connectionSocket.send(menu_enc)
 
                 while True:
-                    choice = (connectionSocket.recv(2048)).decode('ascii')
+                    # Receive and decrypt the client user's choice
+                    choice_recv = connectionSocket.recv(2048)
+                    choice_dec = sym_cipher.decrypt(choice_recv)
+                    choice = unpad(choice_dec, 16).decode('ascii')
                     if choice == '1':
                         print("create and send here")
                         create_and_send(connectionSocket)
@@ -123,7 +131,7 @@ def server():
 
 def validate_user(c, uname, pword):
     # opens the user_pass.json
-    f = open('Server/user_pass.json') # Alternative path is Server/user_pass.json
+    f = open('Server/user_pass.json') # Alternative path is Server/user_pass.json OR user_pass.json
 
     # loads the contents of user_pass.json into a dictionary
     user_data = json.load(f)
@@ -170,6 +178,7 @@ def validate_user(c, uname, pword):
 
         
 def create_and_send(c):
+    # Receive responses from client.py inputs
     return
 
 def display_inbox(c):
