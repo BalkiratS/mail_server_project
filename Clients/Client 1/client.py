@@ -2,6 +2,7 @@
 # Author - Craig Zelmer    ID - 3097415
 import socket
 import sys
+import json
 from Crypto.PublicKey import RSA
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Cipher import PKCS1_OAEP, AES
@@ -114,7 +115,16 @@ def client():
                 print('The message is sent to the server.')
             
             elif choice == '2':
-                print('inbox displays here')
+                #print('inbox displays here')
+                inbox_recv = clientSocket.recv(2048)
+                inbox_dec = sym_cipher.decrypt(inbox_recv)
+                inbox_unpad = unpad(inbox_dec, 16).decode()
+
+                inbox = json.loads(inbox_unpad)
+                print('{:<10} {:<10} {:<30} {:<20}'.format('Index', 'From', 'DateTime', 'Title'))
+
+                for message in inbox['inbox']:
+                    print("{:<10} {:<10} {:<30} {:<20}".format(message['Index'], message['From'], message['DateTime'], message['Title']))
 
             elif choice == '3':
                 print('email displays here')
