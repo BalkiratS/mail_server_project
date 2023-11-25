@@ -6,6 +6,7 @@ import sys
 import os
 import random
 import json
+import datetime as dt
 from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
@@ -19,7 +20,7 @@ def gen_AES_key():
 
 def handshake(connectionSocket):
     try:
-        f = open('Server/server_private.pem','r')
+        f = open('server_private.pem','r')
         priv_key = RSA.import_key(f.read())
         f.close()
 
@@ -64,6 +65,9 @@ def server():
         sys.exit(1)        
         
     print('The server is ready to accept connections')
+
+    # create directories for all the known clients
+    create_client_dir()
         
     #The server can only have one connection in its queue waiting for acceptance
     serverSocket.listen(5)
@@ -95,7 +99,7 @@ def server():
                     choice = unpad(choice_dec, 16).decode('ascii')
                     if choice == '1':
                         print("create and send here")
-                        create_and_send(connectionSocket)
+                        recv_email(connectionSocket, sym_cipher, username)
 
                     elif choice == '2':
                         #print("viewing inbox")
@@ -131,7 +135,7 @@ def server():
 
 def validate_user(c, uname, pword):
     # opens the user_pass.json
-    f = open('Server/user_pass.json') # Alternative path is Server/user_pass.json OR user_pass.json
+    f = open('user_pass.json') # Alternative path is Server/user_pass.json OR user_pass.json
 
     # loads the contents of user_pass.json into a dictionary
     user_data = json.load(f)
@@ -157,7 +161,7 @@ def validate_user(c, uname, pword):
         
         # this formatting is just for pathing purposes
         client_num = f'Client {uname[6:]}'
-        client_pubkey = f'Clients/{client_num}/{uname}_public.pem' # Alternative paths if crashing: Clients/{client_num}/{uname}_public.pem OR {uname}_public.pem
+        client_pubkey = f'{uname}_public.pem' # Alternative paths if crashing: Clients/{client_num}/{uname}_public.pem OR {uname}_public.pem
 
         # will open the client's public key to be used for encryption
         try:
@@ -177,13 +181,78 @@ def validate_user(c, uname, pword):
         return sym_key
 
         
-def create_and_send(c):
+def recv_email(clientSocket, sym_cipher, username):
     # Receive responses from client.py inputs
+    inital_msg = sym_cipher.encrypt(pad(("Send the email").encode('ascii'), 16))
+    clientSocket.sendall(inital_msg)
+
+    # recieve destinations
+    destination = clientSocket.recv(2048).decode('ascii')
+
+    # recive title
+    title = clientSocket.recv(2048).decode('ascii')
+
+    # reject the message if the title exceed the 100 char limit
+    if len(title) > 100:
+        print("Message Rejected: Title too long")
+        return
+    
+    # recive the content lenght
+    content_length = int(clientSocket.recv(2048).decode('ascii'))
+    print(content_length)
+
+    # reject the message if the content length is 0 or it exceed the 1000000 char limit
+    if content_length > 1000000:
+        print("Message Rejected: Content too long")
+        return
+    
+    if content_length == 0:
+        print("Message without content")
+        return
+    
+    message = ""
+    while True:
+        # Receive data from the client in chunks (2048 bytes)
+        data = clientSocket.recv(2048).decode('ascii')
+
+        # Append the data to the message string 
+        message += data
+
+        # Check if all expected data has been received
+        if len(message) == content_length:
+            break
+
+    # Get the current date and time after the whole message is recieved
+    date_time = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+
+    email_str = (
+        f"From: {username}\n"
+        f"To: {destination}\n"
+        f"Time and Date: {date_time}\n"
+        f"Title: {title}\n"
+        f"Content Length: {content_length}\n"
+        f"Content: \n{message}"
+    )
+
+    # print the email
+    print(email_str)
+
+    # get the list of the destinations
+    destination_list = destination.split(';')
+
+    # save the email txt file in all the dest folders and update the json for each folder
+    for dest in destination_list:
+        file_name = f"{dest}/{username}_{title}.txt"
+        with open(file_name, 'w') as file:
+            file.write(email_str)
+        
+        add_entry_to_inbox(dest, username, title, date_time)
+
     return
 
 def display_inbox(c, sym_cipher, username):
     # path for the client's inbox
-    inbox_path = f'Server/{username}_inbox.json'
+    inbox_path = f'{username}/{username}_inbox.json' # alternative path Server/{username}/{username}_inbox.json
 
     # open and load the json into a dictionary
     f = open(inbox_path)
@@ -205,6 +274,77 @@ def display_email(c):
 
 def terminate_connection(c):
     return
+
+
+def create_client_dir():
+
+    with open('user_pass.json', 'r') as file:
+        user_data = json.load(file)
+    
+    all_clients = list(user_data.keys())
+
+    for client in all_clients:
+
+        # Get the current working directory
+        base_directory = os.getcwd()
+
+        # Construct the full path for the user's directory
+        user_directory = os.path.join(base_directory, client)
+
+        # Check if the directory already exists
+        if not os.path.exists(user_directory):
+            # If it doesn't exist, create the directory
+            os.makedirs(user_directory)
+
+            # Create a JSON file in the user's directory
+            json_file_path = os.path.join(user_directory, f'{client}_inbox.json')
+
+            # Initialize inbox_data as an empty list
+            inbox_data = []
+
+            # Write an empty inbox to the JSON file
+            with open(json_file_path, 'w') as json_file:
+                json.dump({"inbox": inbox_data}, json_file, indent=2)
+
+
+
+def add_entry_to_inbox(client, from_client, title, date_time):
+    # Get the current working directory
+    base_directory = os.getcwd()
+
+    # Construct the full path for the user's directory
+    user_directory = os.path.join(base_directory, client)
+
+    # Check if the directory already exists
+    if not os.path.exists(user_directory):
+        print(f"Error: Directory does not exist for {client}")
+        return
+
+    # Construct the full path for the user's inbox JSON file
+    json_file_path = os.path.join(user_directory, f'{client}_inbox.json')
+
+    # Load existing inbox data
+    with open(json_file_path, 'r') as json_file:
+        inbox_data = json.load(json_file)
+
+    # Create a new entry
+    index = len(inbox_data.get("inbox", [])) + 1
+
+    entry = {
+        "Index": index,
+        "From": from_client,
+        "DateTime": date_time,
+        "Title": title
+    }
+
+    # Add the new entry to the inbox
+    inbox_data.setdefault("inbox", []).append(entry)
+
+    # Write the updated inbox data back to the JSON file
+    with open(json_file_path, 'w') as json_file:
+        json.dump(inbox_data, json_file, indent=2)
+    return
+
 
 #-------
 server()

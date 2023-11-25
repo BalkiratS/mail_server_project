@@ -3,14 +3,15 @@
 import socket
 import sys
 import json
+import os
 from Crypto.PublicKey import RSA
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Cipher import PKCS1_OAEP, AES
 
 def handshake(clientSocket):
         try:
-            #f = open('server_public.pem','r') 
-            f = open('Clients/Client 1/server_public.pem','r') #Alternate path without folders
+            f = open('server_public.pem','r') 
+            # f = open('Clients/Client 1/server_public.pem','r') #Alternate path without folders
             server_pubkey = RSA.import_key(f.read())
             f.close()
         except:
@@ -38,7 +39,7 @@ def handshake(clientSocket):
 
             # will get the client's private key to be used for sym key decryption
             client_num = f'Client {username[6:]}'
-            client_privkey = f'Clients/{client_num}/{username}_private.pem'
+            client_privkey = f'{username}_private.pem'
 
             try:
                 f_key = open(client_privkey, 'r')
@@ -96,23 +97,7 @@ def client():
             clientSocket.send(choice_enc)
 
             if choice == '1':
-                # Gather input for email
-                destinations = input('Enter destinations (separated by ;): ')
-                clientSocket.send(destinations.encode('ascii'))
-
-                title = input('Enter title: ')
-                clientSocket.send(title.encode('ascii'))
-
-                add_from_file = input('Would you like to load contents from a file?(Y/N) ')
-                clientSocket.send(add_from_file.encode('ascii'))
-
-                if add_from_file == "Y" or add_from_file == "y":
-                    message = input('Enter filename: ')
-                else:
-                    message = input('Enter message contents: ')
-                clientSocket.send(message.encode('ascii'))
-
-                print('The message is sent to the server.')
+                send_email(clientSocket, sym_cipher)
             
             elif choice == '2':
                 #print('inbox displays here')
@@ -140,6 +125,81 @@ def client():
         print('An error occured:',e)
         clientSocket.close()
         sys.exit(1)
+
+def send_email(clientSocket, sym_cipher):
+    # recive the inital message
+    inital_msg = unpad(sym_cipher.decrypt(clientSocket.recv(2048)), 16).decode('ascii')
+
+    if inital_msg == "Send the email":
+        # Gather input for email
+        destinations = input('\nEnter destinations (separated by ;): ')
+        clientSocket.sendall(destinations.encode('ascii'))
+
+        title = input('Enter title: ')
+        clientSocket.sendall(title.encode('ascii'))
+
+        # reject the message if the title exceed the 100 char limit
+        if len(title) > 100:
+            print("Message Rejected: Title too long, max 100 characters allowed")
+            return
+
+        add_from_file = input('Would you like to load contents from a file?(Y/N) ')
+
+        if add_from_file.upper() == "Y":
+            file_name = input('Enter filename: ')
+            content_length = 0
+
+            # Check if the specified file exists
+            if os.path.isfile(file_name):
+                
+                # get number of characters in the file
+                with open(file_name, 'r') as file:
+                    content = file.read()
+                    content_length = len(content)
+
+                # Send the content length to the server
+                clientSocket.send(f"{content_length}".encode('ascii'))
+
+                 # reject the message if the content length exceed the 1000000 char limit
+                if content_length > 1000000:
+                    print("Message Rejected: Content too long, max 1000000 characters allowed")
+                    return
+                
+                # start sending the message
+                with open(file_name, 'r') as file:
+                    while True:
+                        chunk = file.read(2048)  # Read 2048 characters at a time
+                        if not chunk:
+                            break  # Exit the loop when no more content is left
+                        clientSocket.sendall(chunk.encode('ascii'))
+
+            else:
+                print("Incorrect File Name")
+
+        else:
+            # recieve content from user input
+            message = input('Enter message contents: ')
+            content_length = len(message)
+
+            # Send the content length to the server
+            clientSocket.send(f"{content_length}".encode('ascii'))
+
+
+            # reject the message if the content length exceed the 1000000 char limit or content with 0 char
+            if content_length > 1000000:
+                print("Message Rejected: Content too long, max 1000000 characters allowed")
+                return
+            
+            if content_length == 0:
+                print("No message entered")
+                return
+
+            # send the message to the server
+            clientSocket.sendall(message.encode('ascii'))
+
+        print('The message is sent to the server.')
+
+
 
 #----------
 client()
