@@ -118,7 +118,7 @@ def client():
                     # Get index, encrypt and send to server
                     index = 'a'
                     while not index.isdigit(): # Check if index is a number
-                        index = input('Enter the email index you wish to view: \n')
+                        index = input('Enter the email index you wish to view: ')
                     index_enc = sym_cipher.encrypt(pad(index.encode('ascii'), 16))
                     clientSocket.send(index_enc)
                     
