@@ -112,7 +112,31 @@ def client():
                     print("{:<10} {:<10} {:<30} {:<20}".format(message['Index'], message['From'], message['DateTime'], message['Title']))
 
             elif choice == '3':
-                print('email displays here')
+                initial_msg = unpad(sym_cipher.decrypt(clientSocket.recv(2048)), 16).decode('ascii')
+
+                if initial_msg == 'The server request email index':
+                    # Get index, encrypt and send to server
+                    index = 'a'
+                    while not index.isdigit(): # Check if index is a number
+                        index = input('Enter the email index you wish to view: \n')
+                    index_enc = sym_cipher.encrypt(pad(index.encode('ascii'), 16))
+                    clientSocket.send(index_enc)
+                    
+                    # Get size of email contents file
+                    file_size = clientSocket.recv(2048).decode('ascii')
+                    remaining = int(file_size)
+                    # Initialize file contents container
+                    email_chunks = []
+
+                    # Receive email (while checking if entire file contents have been received)
+                    while remaining > 0:
+                        email_recv = clientSocket.recv(2048)
+                        email_dec = sym_cipher.decrypt(email_recv)
+                        email_unpad = unpad(email_dec, 16).decode('ascii')
+                        email_chunks.append(email_unpad)
+                        remaining -= len(email_recv)
+
+                    print(''.join(email_chunks))
 
             elif choice == '4':
                 print('The connection is terminated with the server.')
@@ -182,8 +206,8 @@ def send_email(clientSocket, sym_cipher):
             content_length = len(message)
 
             # Send the content length to the server
-            clientSocket.send(f"{content_length}".encode('ascii'))
-
+            clientSocket.send(str(content_length).encode('ascii'))
+            clientSocket.send("".encode('ascii')) # Needed this line or else length and part of message send together?
 
             # reject the message if the content length exceed the 1000000 char limit or content with 0 char
             if content_length > 1000000:
