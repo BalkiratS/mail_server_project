@@ -4,7 +4,6 @@
 import socket
 import sys
 import os
-import random
 import json
 import datetime as dt
 from Crypto.Cipher import AES
@@ -17,6 +16,44 @@ def gen_AES_key():
     KeyLen = 256
     sym_key = get_random_bytes(int(KeyLen/8))
     return sym_key
+
+def sendMsg(connectionSocket, sym_cipher, message):
+    # Encrypt Message
+    message_pad = pad(message.encode('ascii'),16)
+    message_enc = sym_cipher.encrypt(message_pad)
+    # Send Encrypted message length
+    msg_len = str(len(message_enc))
+    msg_len_pad = pad(msg_len.encode('ascii'),16)
+    msg_len_enc = sym_cipher.encrypt(msg_len_pad)
+    connectionSocket.send(msg_len_enc)
+    # Recv and decrypt Ready to recv message from Client
+    ready_enc = connectionSocket.recv(2048)
+    ready_pad = sym_cipher.decrypt(ready_enc)
+    ready = unpad(ready_pad,16).decode('ascii')
+    # If message == 'OK' continue to sending message, otherwise terminate
+    if ready == 'OK':
+        connectionSocket.send(message_enc)
+    else:
+        print("Client not ready to recieve message. Terminating")
+        connectionSocket.close()
+        sys.exit(0)
+    return message_enc #Only adding this in case we need it for some reason
+
+def recvMsg(connectionSocket, sym_cipher):
+    # Recv and decrypt message length to recv
+    msg_len_enc = connectionSocket.recv(2048)
+    msg_len_pad = sym_cipher.decrypt(msg_len_enc)
+    msg_len = int(unpad(msg_len_pad,16).decode('ascii'))
+    # Send OK to server, ready to Recv message
+    message = "OK"
+    message_pad = pad(message.encode('ascii'),16)
+    message_enc = sym_cipher.encrypt(message_pad)
+    connectionSocket.send(message_enc)
+    # Recv encrypted message, decrypt and return string of message
+    message_enc = connectionSocket.recv(msg_len)
+    message_pad = sym_cipher.decrypt(message_enc)
+    message = unpad(message_pad,16).decode('ascii')
+    return message
 
 def handshake(connectionSocket):
     try:
@@ -83,14 +120,12 @@ def server():
                 
                 serverSocket.close()
 
-                # Get decryption for login
+                # Get sym_key and username from valid login
                 sym_cipher, username = handshake(connectionSocket) 
                 
                 # Encrypt with symmetric key and send menu to client
                 menu = '\nSelect the operation:\n1) Create and send an email\n2) Display the inbox list\n3) Display the email contents\n4) Terminate the connection\n'
-                menu_pad = pad(menu.encode('ascii'), 16)
-                menu_enc = sym_cipher.encrypt(menu_pad)
-                connectionSocket.send(menu_enc)
+                sendMsg(connectionSocket, sym_cipher, menu)
 
                 while True:
                     # Receive and decrypt the client user's choice
