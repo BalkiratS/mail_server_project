@@ -120,7 +120,7 @@ def server():
                 
                 serverSocket.close()
 
-                # Get decryption for login
+                # Get sym_key and username from valid login
                 sym_cipher, username = handshake(connectionSocket) 
                 
                 # Encrypt with symmetric key and send menu to client
