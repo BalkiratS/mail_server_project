@@ -8,6 +8,44 @@ from Crypto.PublicKey import RSA
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Cipher import PKCS1_OAEP, AES
 
+def recvMsg(clientSocket, sym_cipher):
+    # Recv and decrypt message length to recv
+    msg_len_enc = clientSocket.recv(2048)
+    msg_len_pad = sym_cipher.decrypt(msg_len_enc)
+    msg_len = int(unpad(msg_len_pad,16).decode('ascii'))
+    # Send OK to server, ready to Recv message
+    message = "OK"
+    message_pad = pad(message.encode('ascii'),16)
+    message_enc = sym_cipher.encrypt(message_pad)
+    clientSocket.send(message_enc)
+    # Recv encrypted message, decrypt and return string of message
+    message_enc = clientSocket.recv(msg_len)
+    message_pad = sym_cipher.decrypt(message_enc)
+    message = unpad(message_pad,16).decode('ascii')
+    return message
+    
+def sendMsg(clientSocket, sym_cipher, message):
+    # Encrypt Message
+    message_pad = pad(message.encode('ascii'),16)
+    message_enc = sym_cipher.encrypt(message_pad)
+    # Send Encrypted message length
+    msg_len = len(message_enc)
+    msg_len_pad = pad(msg_len.encode('ascii'),16)
+    msg_len_enc = sym_cipher.encrypt(msg_len_pad)
+    clientSocket.send(msg_len_enc)
+    # Recv and decrypt Ready to recv message from Client
+    ready_enc = clientSocket.recv(2048)
+    ready_pad = sym_cipher.decrypt(ready_enc)
+    ready = unpad(ready_pad,16).decode('ascii')
+    # If message == 'OK' continue to sending message, otherwise terminate
+    if ready == 'OK':
+        clientSocket.send(message_enc)
+    else:
+        print("Client not ready to recieve message. Terminating")
+        clientSocket.close()
+        sys.exit(0)
+    return message_enc #Only adding this in case we need it for some reason
+    
 def handshake(clientSocket):
         try:
             f = open('server_public.pem','r') 
@@ -85,11 +123,9 @@ def client():
         sym_cipher = handshake(clientSocket)
         
         # Receive menu and decrypt (used existing cipher block from handshake() for continuity)
-        menu_recv = clientSocket.recv(2048)
-        menu_dec = sym_cipher.decrypt(menu_recv)
-        menu_unpad = unpad(menu_dec, 16).decode('ascii')
+        menu = recvMsg(clientSocket, sym_cipher)
         while True:
-            print(menu_unpad, end='')
+            print(menu, end='')
             # Get choice, encrypt with symmetric key, then send to server
             choice = input('choice: ')
             choice_pad = pad(choice.encode('ascii'), 16)
