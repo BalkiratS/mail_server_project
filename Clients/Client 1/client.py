@@ -100,7 +100,6 @@ def client():
                 send_email(clientSocket, sym_cipher)
             
             elif choice == '2':
-                #print('inbox displays here')
                 inbox_recv = clientSocket.recv(2048)
                 inbox_dec = sym_cipher.decrypt(inbox_recv)
                 inbox_unpad = unpad(inbox_dec, 16).decode()
@@ -108,8 +107,11 @@ def client():
                 inbox = json.loads(inbox_unpad)
                 print('{:<10} {:<10} {:<30} {:<20}'.format('Index', 'From', 'DateTime', 'Title'))
 
-                for message in inbox['inbox']:
-                    print("{:<10} {:<10} {:<30} {:<20}".format(message['Index'], message['From'], message['DateTime'], message['Title']))
+                # sorts the emails by the DateTime value
+                email_sort = sorted(inbox['inbox'], key=lambda x: x['DateTime'])
+
+                for email in email_sort:
+                    print("{:<10} {:<10} {:<30} {:<20}".format(email['Index'], email['From'], email['DateTime'], email['Title']))
 
             elif choice == '3':
                 initial_msg = unpad(sym_cipher.decrypt(clientSocket.recv(2048)), 16).decode('ascii')
