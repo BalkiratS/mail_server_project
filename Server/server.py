@@ -102,12 +102,10 @@ def server():
                         recv_email(connectionSocket, sym_cipher, username)
 
                     elif choice == '2':
-                        #print("viewing inbox")
                         display_inbox(connectionSocket, sym_cipher, username)
 
                     elif choice == '3':
-                        print("view email here")
-                        display_email(connectionSocket)
+                        display_email(connectionSocket, sym_cipher, username)
 
                     elif choice == '4':
                         break
@@ -198,7 +196,7 @@ def recv_email(clientSocket, sym_cipher, username):
         return
     
     # recive the content lenght
-    content_length = int(clientSocket.recv(2048).decode('ascii'))
+    content_length = int(clientSocket.recv(2048).decode('ascii')) # was receiving length and message together
     print(content_length)
 
     # reject the message if the content length is 0 or it exceed the 1000000 char limit
@@ -269,7 +267,39 @@ def display_inbox(c, sym_cipher, username):
 
     return
     
-def display_email(c):
+def display_email(c, sym_cipher, username):
+    initial_msg = 'The server request email index'
+    msg_enc = sym_cipher.encrypt(pad(initial_msg.encode('ascii'), 16))
+    c.send(msg_enc)
+
+    # Get email index
+    index_recv = c.recv(2048)
+    index_dec = sym_cipher.decrypt(index_recv)
+    index = int(unpad(index_dec, 16).decode('ascii'))
+
+    # Load inbox json
+    inbox_path = f'{username}/{username}_inbox.json' # alternative path Server/{username}/{username}_inbox.json
+    f = open(inbox_path)
+    inbox_dict = json.load(f)
+    f.close()
+
+    # Get title of email from inbox based on index
+    for email in inbox_dict['inbox']:
+        if email['Index'] == index:
+            title = email['Title']
+
+    # Access email file
+    file_name = f"{username}/{username}_{title}.txt"
+    with open(file_name, 'r') as f:
+        # Send file size to client
+        file_size = str(os.path.getsize(file_name))
+        c.send(file_size.encode('ascii'))
+        email = f.read()
+
+    # Send and encrypt email to client
+    email_enc = sym_cipher.encrypt(pad(email.encode('ascii'), 16))
+    c.sendall(email_enc)
+
     return
 
 def terminate_connection(c):
