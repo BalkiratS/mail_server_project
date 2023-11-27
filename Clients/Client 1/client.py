@@ -195,7 +195,7 @@ def send_email(clientSocket, sym_cipher):
                         chunk = file.read(2048)  # Read 2048 characters at a time
                         if not chunk:
                             break  # Exit the loop when no more content is left
-                        clientSocket.sendall(chunk.encode('ascii'))
+                        clientSocket.send(chunk.encode('ascii'))
 
             else:
                 print("Incorrect File Name")
@@ -218,8 +218,11 @@ def send_email(clientSocket, sym_cipher):
                 print("No message entered")
                 return
 
-            # send the message to the server
-            clientSocket.sendall(message.encode('ascii'))
+            # Iterate over the message in chunks of 2048 bytes
+            for i in range(0, content_length, 2048):
+                chunk = message[i:i+2048]
+                # Send the chunk to the server
+                clientSocket.send(chunk.encode('ascii'))
 
         print('The message is sent to the server.')
 
