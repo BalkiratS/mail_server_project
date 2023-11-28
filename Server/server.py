@@ -129,9 +129,7 @@ def server():
 
                 while True:
                     # Receive and decrypt the client user's choice
-                    choice_recv = connectionSocket.recv(2048)
-                    choice_dec = sym_cipher.decrypt(choice_recv)
-                    choice = unpad(choice_dec, 16).decode('ascii')
+                    choice = recvMsg(connectionSocket, sym_cipher)
                     if choice == '1':
                         print("create and send here")
                         recv_email(connectionSocket, sym_cipher, username)
@@ -214,16 +212,15 @@ def validate_user(c, uname, pword):
         return sym_key
 
         
-def recv_email(clientSocket, sym_cipher, username):
+def recv_email(connectionSocket, sym_cipher, username):
     # Receive responses from client.py inputs
-    inital_msg = sym_cipher.encrypt(pad(("Send the email").encode('ascii'), 16))
-    clientSocket.sendall(inital_msg)
+    sendMsg(connectionSocket, sym_cipher, "Send the email")
 
     # recieve destinations
-    destination = clientSocket.recv(2048).decode('ascii')
+    destination = recvMsg(connectionSocket, sym_cipher)
 
     # recive title
-    title = clientSocket.recv(2048).decode('ascii')
+    title = recvMsg(connectionSocket, sym_cipher)
 
     # reject the message if the title exceed the 100 char limit
     if len(title) > 100:
@@ -231,8 +228,7 @@ def recv_email(clientSocket, sym_cipher, username):
         return
     
     # recive the content lenght
-    content_length = int(clientSocket.recv(2048).decode('ascii')) # was receiving length and message together
-    print(content_length)
+    content_length = int(recvMsg(connectionSocket, sym_cipher))
 
     # reject the message if the content length is 0 or it exceed the 1000000 char limit
     if content_length > 1000000:
@@ -246,7 +242,7 @@ def recv_email(clientSocket, sym_cipher, username):
     message = ""
     while True:
         # Receive data from the client in chunks (2048 bytes)
-        data = clientSocket.recv(2048).decode('ascii')
+        data = recvMsg(connectionSocket, sym_cipher)
 
         # Append the data to the message string 
         message += data
@@ -304,13 +300,10 @@ def display_inbox(c, sym_cipher, username):
     
 def display_email(c, sym_cipher, username):
     initial_msg = 'The server request email index'
-    msg_enc = sym_cipher.encrypt(pad(initial_msg.encode('ascii'), 16))
-    c.send(msg_enc)
+    sendMsg(c, sym_cipher, initial_msg)
 
     # Get email index
-    index_recv = c.recv(2048)
-    index_dec = sym_cipher.decrypt(index_recv)
-    index = int(unpad(index_dec, 16).decode('ascii'))
+    index = int(recvMsg(c, sym_cipher))
 
     # Load inbox json
     inbox_path = f'{username}/{username}_inbox.json' # alternative path Server/{username}/{username}_inbox.json
@@ -328,7 +321,7 @@ def display_email(c, sym_cipher, username):
     with open(file_name, 'r') as f:
         # Send file size to client
         file_size = str(os.path.getsize(file_name))
-        c.send(file_size.encode('ascii'))
+        sendMsg(c, sym_cipher, file_size)
         email = f.read()
 
     # Send and encrypt email to client

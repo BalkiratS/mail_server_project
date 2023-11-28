@@ -29,7 +29,7 @@ def sendMsg(clientSocket, sym_cipher, message):
     message_pad = pad(message.encode('ascii'),16)
     message_enc = sym_cipher.encrypt(message_pad)
     # Send Encrypted message length
-    msg_len = len(message_enc)
+    msg_len = str(len(message_enc))
     msg_len_pad = pad(msg_len.encode('ascii'),16)
     msg_len_enc = sym_cipher.encrypt(msg_len_pad)
     clientSocket.send(msg_len_enc)
@@ -128,9 +128,7 @@ def client():
             print(menu, end='')
             # Get choice, encrypt with symmetric key, then send to server
             choice = input('choice: ')
-            choice_pad = pad(choice.encode('ascii'), 16)
-            choice_enc = sym_cipher.encrypt(choice_pad)
-            clientSocket.send(choice_enc)
+            sendMsg(clientSocket, sym_cipher, choice)
 
             if choice == '1':
                 send_email(clientSocket, sym_cipher)
@@ -150,18 +148,17 @@ def client():
                     print("{:<10} {:<10} {:<30} {:<20}".format(email['Index'], email['From'], email['DateTime'], email['Title']))
 
             elif choice == '3':
-                initial_msg = unpad(sym_cipher.decrypt(clientSocket.recv(2048)), 16).decode('ascii')
+                initial_msg = recvMsg(clientSocket, sym_cipher)
 
                 if initial_msg == 'The server request email index':
                     # Get index, encrypt and send to server
                     index = 'a'
-                    while not index.isdigit(): # Check if index is a number
+                    while not index.isdigit() or int(index) <= 0: # Check if index is a number above zero
                         index = input('Enter the email index you wish to view: ')
-                    index_enc = sym_cipher.encrypt(pad(index.encode('ascii'), 16))
-                    clientSocket.send(index_enc)
+                    sendMsg(clientSocket, sym_cipher, index)
                     
                     # Get size of email contents file
-                    file_size = clientSocket.recv(2048).decode('ascii')
+                    file_size = recvMsg(clientSocket, sym_cipher)
                     remaining = int(file_size)
                     # Initialize file contents container
                     email_chunks = []
@@ -190,15 +187,15 @@ def client():
 
 def send_email(clientSocket, sym_cipher):
     # recive the inital message
-    inital_msg = unpad(sym_cipher.decrypt(clientSocket.recv(2048)), 16).decode('ascii')
+    inital_msg = recvMsg(clientSocket, sym_cipher)
 
     if inital_msg == "Send the email":
         # Gather input for email
         destinations = input('\nEnter destinations (separated by ;): ')
-        clientSocket.sendall(destinations.encode('ascii'))
+        sendMsg(clientSocket, sym_cipher, destinations)
 
         title = input('Enter title: ')
-        clientSocket.sendall(title.encode('ascii'))
+        sendMsg(clientSocket, sym_cipher, title)
 
         # reject the message if the title exceed the 100 char limit
         if len(title) > 100:
@@ -220,7 +217,7 @@ def send_email(clientSocket, sym_cipher):
                     content_length = len(content)
 
                 # Send the content length to the server
-                clientSocket.send(f"{content_length}".encode('ascii'))
+                sendMsg(clientSocket, sym_cipher, str(content_length))
 
                  # reject the message if the content length exceed the 1000000 char limit
                 if content_length > 1000000:
@@ -233,7 +230,7 @@ def send_email(clientSocket, sym_cipher):
                         chunk = file.read(2048)  # Read 2048 characters at a time
                         if not chunk:
                             break  # Exit the loop when no more content is left
-                        clientSocket.send(chunk.encode('ascii'))
+                        sendMsg(clientSocket, sym_cipher, chunk)
 
             else:
                 print("Incorrect File Name")
@@ -244,8 +241,7 @@ def send_email(clientSocket, sym_cipher):
             content_length = len(message)
 
             # Send the content length to the server
-            clientSocket.send(str(content_length).encode('ascii'))
-            clientSocket.send("".encode('ascii')) # Needed this line or else length and part of message send together?
+            sendMsg(clientSocket, sym_cipher, str(content_length))
 
             # reject the message if the content length exceed the 1000000 char limit or content with 0 char
             if content_length > 1000000:
@@ -260,7 +256,7 @@ def send_email(clientSocket, sym_cipher):
             for i in range(0, content_length, 2048):
                 chunk = message[i:i+2048]
                 # Send the chunk to the server
-                clientSocket.send(chunk.encode('ascii'))
+                sendMsg(clientSocket, sym_cipher, chunk)
 
         print('The message is sent to the server.')
 
