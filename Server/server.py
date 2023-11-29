@@ -139,8 +139,8 @@ def server():
                         display_email(connectionSocket, sym_cipher, username)
 
                     elif choice == '4':
+                        terminate_connection(connectionSocket, username)
                         break
-                        #terminate_connection(connectionSocket) # not finished yet
 
                     else:
                         continue
@@ -328,7 +328,9 @@ def display_email(c, sym_cipher, username):
 
     return
 
-def terminate_connection(c):
+def terminate_connection(c, username):
+    print(f"Terminating connection with {username}.")
+    c.close()
     return
 
 
