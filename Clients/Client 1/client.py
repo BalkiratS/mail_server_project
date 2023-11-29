@@ -175,6 +175,7 @@ def client():
 
             elif choice == '4':
                 print('The connection is terminated with the server.')
+                clientSocket.close()
                 break
 
             else:
