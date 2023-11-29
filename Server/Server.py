@@ -1,6 +1,5 @@
 # This is adapted from "Computer Networking: A Top Down Approach" textbook chapter 2
-# Author - Craig Zelmer     ID - 3097415
-
+# Authors: Craig Zelmer, Collette Patalinghog, Mikayla Pichonsky, Balkirat Padda
 import socket
 import sys
 import os
@@ -158,7 +157,6 @@ def server():
             sys.exit(1)        
         except Exception as e:
             print(f'Unhandled exception of type {type(e).__name__}: {str(e)}')
-            #print('Goodbye')
             serverSocket.close() 
             sys.exit(0)
 
@@ -314,8 +312,14 @@ def display_email(c, sym_cipher, username):
         if email['Index'] == index:
             title = email['Title']
 
+    # Get the name of the source client from the inbox based on index
+    for email in inbox_dict['inbox']:
+        if email['Index'] == index:
+            src = email['From']
+
     # Access email file
-    file_name = f"{username}/{username}_{title}.txt"
+    #file_name = f"{username}/{username}_{title}.txt"
+    file_name = f"{username}/{src}_{title}.txt"
     with open(file_name, 'r') as f:
         # Send file size to client
         file_size = str(os.path.getsize(file_name))
