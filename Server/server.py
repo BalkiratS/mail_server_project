@@ -6,11 +6,10 @@ import sys
 import os
 import json
 import datetime as dt
-from Crypto.Cipher import AES
+from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
-from Crypto.Cipher import PKCS1_OAEP
 
 def gen_AES_key():
     KeyLen = 256
@@ -131,7 +130,6 @@ def server():
                     # Receive and decrypt the client user's choice
                     choice = recvMsg(connectionSocket, sym_cipher)
                     if choice == '1':
-                        print("create and send here")
                         recv_email(connectionSocket, sym_cipher, username)
 
                     elif choice == '2':
@@ -190,8 +188,6 @@ def validate_user(c, uname, pword):
         # generate symmetric key
         sym_key = gen_AES_key()
         
-        # this formatting is just for pathing purposes
-        client_num = f'Client {uname[6:]}'
         client_pubkey = f'{uname}_public.pem' # Alternative paths if crashing: Clients/{client_num}/{uname}_public.pem OR {uname}_public.pem
 
         # will open the client's public key to be used for encryption
@@ -263,8 +259,10 @@ def recv_email(connectionSocket, sym_cipher, username):
         f"Content: \n{message}"
     )
 
-    # print the email
-    print(email_str)
+    email_notif = f'An email from {username} is sent to {destination} has a content length of {content_length}.'
+
+    # print the notification for email sent/received
+    print(email_notif)
 
     # get the list of the destinations
     destination_list = destination.split(';')
