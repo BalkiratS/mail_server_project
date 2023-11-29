@@ -1,0 +1,7 @@
+From: client2
+To: client1;client5
+Time and Date: 2023-11-29 12:22:16.833627
+Title: Test2
+Content Length: 28
+Content: 
+Hello! This is a test email.
