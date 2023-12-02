@@ -1,5 +1,5 @@
 # This is adapted from "Computer Networking: A Top Down Approach" textbook chapter 2
-# Author - Craig Zelmer    ID - 3097415
+# Authors: Craig Zelmer, Collette Patalinghog, Mikayla Pichonsky, Balkirat Padda
 import socket
 import sys
 import json
