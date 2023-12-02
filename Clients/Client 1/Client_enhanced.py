@@ -99,7 +99,18 @@ def handshake(clientSocket):
             pad_ok = pad('OK'.encode('ascii'), 16)
             ok_enc = sym_cipher.encrypt(pad_ok)
             clientSocket.send(ok_enc)
-            return sym_cipher
+
+            # Recieve AES encrypted MAC secret key from server and decrypt it
+            # Using 2048 for recv since it shouldn't ever be longer
+            padded_key = sym_cipher.decrypt(clientSocket.recv(2048))
+            secret_key = unpad(padded_key,16).decode('ascii')
+
+            # Send OK one last time to verify MAC secret key was recieved
+            pad_ok = pad('OK'.encode('ascii'), 16)
+            ok_enc = sym_cipher.encrypt(pad_ok)
+            clientSocket.send(ok_enc)
+
+            return sym_cipher, secret_key
 
 def client():
     # Server Information
@@ -121,7 +132,7 @@ def client():
         
         # Client is asked for username and password
         # Encrypt with server public key. Send to server
-        sym_cipher = handshake(clientSocket)
+        sym_cipher, secret_key = handshake(clientSocket)
         
         # Receive menu and decrypt (used existing cipher block from handshake() for continuity)
         menu = recvMsg(clientSocket, sym_cipher)

@@ -80,7 +80,17 @@ def handshake(connectionSocket):
     response_dec = cipher.decrypt(response)
     response_unpad = unpad(response_dec, 16).decode('ascii')
 
-    return cipher, username # added a username to return to be used in subprotocols
+    # Send AES encrypted secret MAC key to client
+    secret_key = b"magicman"
+    enc_secret_key = cipher.encrypt(pad(secret_key.encode('ascii'),16))
+    connectionSocket.send(enc_secret_key)
+
+    # Recieve Final OK message and move into main function
+    response = connectionSocket(2048)
+    response_dec = cipher.decrypt(response)
+    response_unpad = unpad(response_dec, 16).decode('ascii')
+
+    return cipher, username, secret_key # added a username to return to be used in subprotocols
 
 def server():
     #Server port
@@ -120,7 +130,7 @@ def server():
                 serverSocket.close()
 
                 # Get sym_key and username from valid login
-                sym_cipher, username = handshake(connectionSocket) 
+                sym_cipher, username, secret_key = handshake(connectionSocket) 
                 
                 # Encrypt with symmetric key and send menu to client
                 menu = '\nSelect the operation:\n1) Create and send an email\n2) Display the inbox list\n3) Display the email contents\n4) Terminate the connection\n'
