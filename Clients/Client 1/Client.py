@@ -157,21 +157,9 @@ def client():
                         index = input('Enter the email index you wish to view: ')
                     sendMsg(clientSocket, sym_cipher, index)
                     
-                    # Get size of email contents file
-                    file_size = recvMsg(clientSocket, sym_cipher)
-                    remaining = int(file_size)
-                    # Initialize file contents container
-                    email_chunks = []
-
-                    # Receive email (while checking if entire file contents have been received)
-                    while remaining > 0:
-                        email_recv = clientSocket.recv(2048)
-                        email_dec = sym_cipher.decrypt(email_recv)
-                        email_unpad = unpad(email_dec, 16).decode('ascii')
-                        email_chunks.append(email_unpad)
-                        remaining -= len(email_recv)
-
-                    print(''.join(email_chunks))
+                    # Get email and print it
+                    email = recvMsg(clientSocket, sym_cipher)
+                    print(email)
 
             elif choice == '4':
                 print('The connection is terminated with the server.')

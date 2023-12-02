@@ -307,28 +307,30 @@ def display_email(c, sym_cipher, username):
     inbox_dict = json.load(f)
     f.close()
 
+    title = ''
     # Get title of email from inbox based on index
     for email in inbox_dict['inbox']:
         if email['Index'] == index:
             title = email['Title']
+    if title != "":
+        # Get the name of the source client from the inbox based on index
+        for email in inbox_dict['inbox']:
+            if email['Index'] == index:
+                src = email['From']
 
-    # Get the name of the source client from the inbox based on index
-    for email in inbox_dict['inbox']:
-        if email['Index'] == index:
-            src = email['From']
+        # Access email file
+        #file_name = f"{username}/{username}_{title}.txt"
+        file_name = f"{username}/{src}_{title}.txt"
+        with open(file_name, 'r') as f:
+            # Read email
+            email = f.read()
 
-    # Access email file
-    #file_name = f"{username}/{username}_{title}.txt"
-    file_name = f"{username}/{src}_{title}.txt"
-    with open(file_name, 'r') as f:
-        # Send file size to client
-        file_size = str(os.path.getsize(file_name))
-        sendMsg(c, sym_cipher, file_size)
-        email = f.read()
-
-    # Send and encrypt email to client
-    email_enc = sym_cipher.encrypt(pad(email.encode('ascii'), 16))
-    c.sendall(email_enc)
+        print(email)
+        # Send and encrypt email to client
+        sendMsg(c, sym_cipher, email)
+    else:
+        email = "Email does not exist"
+        sendMsg(c, sym_cipher, email)
 
     return
 
