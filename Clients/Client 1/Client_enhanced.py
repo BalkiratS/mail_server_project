@@ -9,23 +9,59 @@ from Crypto.Util.Padding import pad, unpad
 from Crypto.Cipher import PKCS1_OAEP, AES
 from Crypto.Hash import HMAC, SHA256
 
-def recvMsg(clientSocket, sym_cipher):
+def recvMsg(clientSocket, sym_cipher, secret_key):
     # Recv and decrypt message length to recv
     msg_len_enc = clientSocket.recv(2048)
     msg_len_pad = sym_cipher.decrypt(msg_len_enc)
     msg_len = int(unpad(msg_len_pad,16).decode('ascii'))
     # Send OK to server, ready to Recv message
-    message = "OK"
-    message_pad = pad(message.encode('ascii'),16)
-    message_enc = sym_cipher.encrypt(message_pad)
-    clientSocket.send(message_enc)
+    ready = "OK"
+    ready_pad = pad(ready.encode('ascii'),16)
+    ready_enc = sym_cipher.encrypt(ready_pad)
+    clientSocket.send(ready_enc)
     # Recv encrypted message, decrypt and return string of message
     message_enc = clientSocket.recv(msg_len)
     message_pad = sym_cipher.decrypt(message_enc)
     message = unpad(message_pad,16).decode('ascii')
-    return message
+
+    ### Repeat Process for MAC of message ###
+    # Recv and decrypt message length to recv
+    msg_len_enc = clientSocket.recv(2048)
+    msg_len_pad = sym_cipher.decrypt(msg_len_enc)
+    msg_len = int(unpad(msg_len_pad,16).decode('ascii'))
+    # Send OK to server, ready to Recv message
+    ready = "OK"
+    ready_pad = pad(ready.encode('ascii'),16)
+    ready_enc = sym_cipher.encrypt(ready_pad)
+    clientSocket.send(ready_enc)
+    # Recv encrypted message, decrypt and return string of message
+    mac_enc = clientSocket.recv(msg_len)
+    mac_pad = sym_cipher.decrypt(mac_enc)
+    mac = unpad(mac_pad,16).decode('ascii')
+
+    # Verify MAC with message. If verification comes out false, message has been
+    # tampered with. Send 'MAC Bad' to other side then terminate.
+    # If not tampering, send 'MAC OK' to other side and return message.
+    if (verify_mac(secret_key, message.encode('UTF-8'), mac)):
+        ready = "MAC OK"
+        ready_pad = pad(ready.encode('ascii'),16)
+        ready_enc = sym_cipher.encrypt(ready_pad)
+        clientSocket.send(ready_enc)
+        return message
+    else:
+        ready = "MAC Bad"
+        ready_pad = pad(ready.encode('ascii'),16)
+        ready_enc = sym_cipher.encrypt(ready_pad)
+        clientSocket.send(ready_enc)
+        print("Terminating connection.")
+        clientSocket.close()
+        sys.exit(0)
+        
     
-def sendMsg(clientSocket, sym_cipher, message):
+def sendMsg(clientSocket, sym_cipher, secret_key, message):
+    # Get MAC of message and encrypt it
+    mac = create_mac(secret_key, message.encode('UTF-8'))
+    mac_enc = sym_cipher.encrypt(pad(mac.encode('ascii'),16))
     # Encrypt Message
     message_pad = pad(message.encode('ascii'),16)
     message_enc = sym_cipher.encrypt(message_pad)
@@ -42,10 +78,36 @@ def sendMsg(clientSocket, sym_cipher, message):
     if ready == 'OK':
         clientSocket.send(message_enc)
     else:
+        print("Client not ready to recieve message. Terminating Connection")
+        clientSocket.close()
+        sys.exit(0)
+
+    ### Repeat Process for MAC of message ###
+    # Send Encrypted MAC length
+    msg_len = str(len(mac_enc))
+    msg_len_pad = pad(msg_len.encode('ascii'),16)
+    msg_len_enc = sym_cipher.encrypt(msg_len_pad)
+    clientSocket.send(msg_len_enc)
+    # Recv and decrypt Ready to recv message from Client
+    ready_enc = clientSocket.recv(2048)
+    ready_pad = sym_cipher.decrypt(ready_enc)
+    ready = unpad(ready_pad,16).decode('ascii')
+    # If message == 'OK' continue to sending message, otherwise terminate
+    if ready == 'OK':
+        clientSocket.send(mac_enc)
+    else:
         print("Client not ready to recieve message. Terminating")
         clientSocket.close()
         sys.exit(0)
-    return message_enc #Only adding this in case we need it for some reason
+    # Recieve whether MAC was verified by other side. Return if 'MAC OK'
+    # Otherwise terminate connection
+    mac_ok_enc = clientSocket.recv(2048)
+    mac_ok_pad = sym_cipher.decrypt(mac_ok_enc)
+    mac_ok = unpad(mac_ok_pad,16).decode('ascii')
+    if mac_ok != 'MAC OK':
+        clientSocket.close()
+        sys.exit(0)
+    return message_enc, mac_enc #Only adding this in case we need it for some reason
     
 def handshake(clientSocket):
         try:
@@ -99,7 +161,18 @@ def handshake(clientSocket):
             pad_ok = pad('OK'.encode('ascii'), 16)
             ok_enc = sym_cipher.encrypt(pad_ok)
             clientSocket.send(ok_enc)
-            return sym_cipher
+
+            # Recieve AES encrypted MAC secret key from server and decrypt it
+            # Using 2048 for recv since it shouldn't ever be longer
+            padded_key = sym_cipher.decrypt(clientSocket.recv(2048))
+            secret_key = unpad(padded_key,16)
+
+            # Send OK one last time to verify MAC secret key was recieved
+            pad_ok = pad('OK'.encode('ascii'), 16)
+            ok_enc = sym_cipher.encrypt(pad_ok)
+            clientSocket.send(ok_enc)
+
+            return sym_cipher, secret_key
 
 def client():
     # Server Information
@@ -121,25 +194,22 @@ def client():
         
         # Client is asked for username and password
         # Encrypt with server public key. Send to server
-        sym_cipher = handshake(clientSocket)
+        sym_cipher, secret_key = handshake(clientSocket)
         
         # Receive menu and decrypt (used existing cipher block from handshake() for continuity)
-        menu = recvMsg(clientSocket, sym_cipher)
+        menu = recvMsg(clientSocket, sym_cipher, secret_key)
         while True:
             print(menu, end='')
             # Get choice, encrypt with symmetric key, then send to server
             choice = input('choice: ')
-            sendMsg(clientSocket, sym_cipher, choice)
+            sendMsg(clientSocket, sym_cipher, secret_key, choice)
 
             if choice == '1':
-                send_email(clientSocket, sym_cipher)
+                send_email(clientSocket, sym_cipher, secret_key)
             
             elif choice == '2':
-                inbox_recv = clientSocket.recv(2048)
-                inbox_dec = sym_cipher.decrypt(inbox_recv)
-                inbox_unpad = unpad(inbox_dec, 16).decode()
-
-                inbox = json.loads(inbox_unpad)
+                inbox_recv = recvMsg(clientSocket, sym_cipher, secret_key)
+                inbox = json.loads(inbox_recv)
                 print('{:<10} {:<10} {:<30} {:<20}'.format('Index', 'From', 'DateTime', 'Title'))
 
                 # sorts the emails by the DateTime value
@@ -149,30 +219,18 @@ def client():
                     print("{:<10} {:<10} {:<30} {:<20}".format(email['Index'], email['From'], email['DateTime'], email['Title']))
 
             elif choice == '3':
-                initial_msg = recvMsg(clientSocket, sym_cipher)
+                initial_msg = recvMsg(clientSocket, sym_cipher, secret_key)
 
                 if initial_msg == 'The server request email index':
                     # Get index, encrypt and send to server
                     index = 'a'
                     while not index.isdigit() or int(index) <= 0: # Check if index is a number above zero
                         index = input('Enter the email index you wish to view: ')
-                    sendMsg(clientSocket, sym_cipher, index)
+                    sendMsg(clientSocket, sym_cipher, secret_key, index)
                     
-                    # Get size of email contents file
-                    file_size = recvMsg(clientSocket, sym_cipher)
-                    remaining = int(file_size)
-                    # Initialize file contents container
-                    email_chunks = []
-
-                    # Receive email (while checking if entire file contents have been received)
-                    while remaining > 0:
-                        email_recv = clientSocket.recv(2048)
-                        email_dec = sym_cipher.decrypt(email_recv)
-                        email_unpad = unpad(email_dec, 16).decode('ascii')
-                        email_chunks.append(email_unpad)
-                        remaining -= len(email_recv)
-
-                    print(''.join(email_chunks))
+                    # Get email and print it
+                    email = recvMsg(clientSocket, sym_cipher, secret_key)
+                    print(email)
 
             elif choice == '4':
                 print('The connection is terminated with the server.')
@@ -187,17 +245,17 @@ def client():
         clientSocket.close()
         sys.exit(1)
 
-def send_email(clientSocket, sym_cipher):
+def send_email(clientSocket, sym_cipher, secret_key):
     # recive the inital message
-    inital_msg = recvMsg(clientSocket, sym_cipher)
+    inital_msg = recvMsg(clientSocket, sym_cipher, secret_key)
 
     if inital_msg == "Send the email":
         # Gather input for email
         destinations = input('\nEnter destinations (separated by ;): ')
-        sendMsg(clientSocket, sym_cipher, destinations)
+        sendMsg(clientSocket, sym_cipher, secret_key, destinations)
 
         title = input('Enter title: ')
-        sendMsg(clientSocket, sym_cipher, title)
+        sendMsg(clientSocket, sym_cipher, secret_key, title)
 
         # reject the message if the title exceed the 100 char limit
         if len(title) > 100:
@@ -219,20 +277,15 @@ def send_email(clientSocket, sym_cipher):
                     content_length = len(content)
 
                 # Send the content length to the server
-                sendMsg(clientSocket, sym_cipher, str(content_length))
+                sendMsg(clientSocket, sym_cipher, secret_key, str(content_length))
 
                  # reject the message if the content length exceed the 1000000 char limit
                 if content_length > 1000000:
                     print("Message Rejected: Content too long, max 1000000 characters allowed")
                     return
                 
-                # start sending the message
-                with open(file_name, 'r') as file:
-                    while True:
-                        chunk = file.read(2048)  # Read 2048 characters at a time
-                        if not chunk:
-                            break  # Exit the loop when no more content is left
-                        sendMsg(clientSocket, sym_cipher, chunk)
+                # Send Message
+                sendMsg(clientSocket, sym_cipher, secret_key, content)
 
             else:
                 print("Incorrect File Name")
@@ -243,7 +296,7 @@ def send_email(clientSocket, sym_cipher):
             content_length = len(message)
 
             # Send the content length to the server
-            sendMsg(clientSocket, sym_cipher, str(content_length))
+            sendMsg(clientSocket, sym_cipher, secret_key, str(content_length))
 
             # reject the message if the content length exceed the 1000000 char limit or content with 0 char
             if content_length > 1000000:
@@ -254,11 +307,8 @@ def send_email(clientSocket, sym_cipher):
                 print("No message entered")
                 return
 
-            # Iterate over the message in chunks of 2048 bytes
-            for i in range(0, content_length, 2048):
-                chunk = message[i:i+2048]
-                # Send the chunk to the server
-                sendMsg(clientSocket, sym_cipher, chunk)
+            # Send message
+            sendMsg(clientSocket, sym_cipher, secret_key, message)
 
         print('The message is sent to the server.')
 
