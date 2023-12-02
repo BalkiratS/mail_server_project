@@ -319,7 +319,6 @@ def display_email(c, sym_cipher, username):
                 src = email['From']
 
         # Access email file
-        #file_name = f"{username}/{username}_{title}.txt"
         file_name = f"{username}/{src}_{title}.txt"
         with open(file_name, 'r') as f:
             # Read email

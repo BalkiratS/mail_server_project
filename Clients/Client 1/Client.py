@@ -1,5 +1,5 @@
 # This is adapted from "Computer Networking: A Top Down Approach" textbook chapter 2
-# Author - Craig Zelmer    ID - 3097415
+# Authors: Craig Zelmer, Collette Patalinghog, Mikayla Pichonsky, Balkirat Padda
 import socket
 import sys
 import json
@@ -49,7 +49,6 @@ def sendMsg(clientSocket, sym_cipher, message):
 def handshake(clientSocket):
         try:
             f = open('server_public.pem','r') 
-            # f = open('Clients/Client 1/server_public.pem','r') #Alternate path without folders
             server_pubkey = RSA.import_key(f.read())
             f.close()
         except:
