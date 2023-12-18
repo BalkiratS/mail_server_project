@@ -65,4 +65,4 @@ This repository includes Python programs for a secure mail transfer protocol (SM
 This project was collaboratively developed by Balkirat Padda, Craig Zelmer, Collette Patalinghog, and Mikayla Pichonsky. Contributions were roughly equal for all components.
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE.txt) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
